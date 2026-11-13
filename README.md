@@ -10,6 +10,15 @@ Build the walking-skeleton flow: a signed-in user sees their SAR wallet balance,
 
 Use the pinned OpenAPI contract at `../money-service/openapi/raad-money-v1.yaml` as the wire source of truth. Configure the API base URL per environment; do not hard-code a public hostname. Send the Cognito access token as `Authorization: Bearer <token>` on every Money API request. Do not send identity fields to select the caller; the service derives the caller from the verified token.
 
+The contract is published on `RaadMoneyService` branch `aidlc/u1-contract-handoff`. If that branch is not merged into `main` yet, fetch and read the pinned file directly:
+
+```sh
+git -C ../money-service fetch origin aidlc/u1-contract-handoff
+git -C ../money-service show origin/aidlc/u1-contract-handoff:openapi/raad-money-v1.yaml > /tmp/raad-money-v1.yaml
+```
+
+Generate the Dart client from that contract file; do not create a second, hand-maintained wire schema.
+
 All amounts are integer halalas. Display `amountHalalas / 100` as SAR with two decimal places. Never use floating point for money calculations; parse user-entered decimal text into whole halalas.
 
 U1 calls:
