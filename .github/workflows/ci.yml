@@ -1,0 +1,36 @@
+name: mobile-ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.2
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Formatting
+        run: dart format --output=none --set-exit-if-changed lib test integration_test tool
+      - name: Analysis (flutter_lints; any issue fails)
+        run: flutter analyze
+      - name: Generated C1 client matches the pinned contract
+        run: dart run swagger_parser --check
+      - name: Unit, widget and contract tests with coverage
+        run: flutter test --coverage
+      - name: Line coverage floor (80%)
+        run: dart run tool/check_coverage.dart coverage/lcov.info 80
+      - name: Example C4 file passes the build-time check
+        run: dart run tool/check_env_config.dart config/c4-dev.example.json dev
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
