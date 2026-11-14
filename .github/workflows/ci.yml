@@ -7,12 +7,17 @@ on:
 
 permissions:
   contents: read
+  # gitleaks lists a pull request's commits to scan them.
+  pull-requests: read
 
 jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # gitleaks needs the pull request's commits, not only the tip.
+          fetch-depth: 0
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.47.2
