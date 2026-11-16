@@ -11,7 +11,7 @@ final class MoneyApiClient {
   static const String title = "RAAD Money API";
 
   /// API version from info.version.
-  static const String apiVersion = "1.0.0";
+  static const String apiVersion = "1.0.0-u1.2";
 
   /// Exact Swagger or OpenAPI version.
   static const String specVersion = "3.1.0";

@@ -46,3 +46,11 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# AI-DLC runtime files; the shared record lives in the Raad repo.
+/aidlc/
+.aidlc-*/
+
+# Real environment files are supplied per build; only examples are committed.
+/config/*.json
+!/config/*.example.json

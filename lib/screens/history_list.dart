@@ -86,7 +86,10 @@ class HistoryList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final item in items) HistoryEntry(item: item),
-        if (page?.nextCursor != null)
+        // U1 shows the first page only and does not claim it is complete. The
+        // U1 service reports left-out rows with hasMore and keeps nextCursor
+        // null; a U2 service sets nextCursor.
+        if (page?.hasMore == true || page?.nextCursor != null)
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(

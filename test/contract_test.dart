@@ -99,6 +99,17 @@ void main() {
       }
     });
 
+    test('the fake follows the U1 rules the pinned contract declares', () {
+      // If a later pin drops or changes these, the contract fake must change
+      // with it before this test passes again.
+      expect(openApi['x-u1-conformance'], {
+        'savedReplay': false,
+        'automaticOrManualUncertainResubmit': false,
+        'historyPages': 'first-only',
+        'amountRule': 'positive-integer-halalas',
+      });
+    });
+
     test('the generated client was made from that contract version', () {
       final info = openApi['info']! as Map<String, Object?>;
       expect(MoneyApiClient.apiVersion, info['version']);
@@ -243,7 +254,7 @@ void main() {
     });
 
     test(
-      'transfer outcomes, with Idempotency-Replayed only where persisted',
+      'transfer outcomes under the U1 rules, with nothing replayed',
       () async {
         await call('PUT', '/wallet');
         final cases = <(Map<String, Object?>, int, String?)>[
@@ -257,10 +268,16 @@ void main() {
             404,
             'RECIPIENT_NOT_FOUND',
           ),
+          // U1 accepts any positive whole amount; the range is U2 work.
           (
             {'recipientEmail': 'omar@raad.test', 'amountHalalas': 99},
-            422,
-            'AMOUNT_OUT_OF_RANGE',
+            201,
+            null,
+          ),
+          (
+            {'recipientEmail': 'omar@raad.test', 'amountHalalas': 0},
+            400,
+            'VALIDATION_ERROR',
           ),
           (
             {'recipientEmail': fakeSara.email, 'amountHalalas': 10000},
@@ -268,12 +285,12 @@ void main() {
             'SELF_TRANSFER',
           ),
           (
-            {'recipientEmail': 'omar@raad.test', 'amountHalalas': 50000},
+            {'recipientEmail': 'omar@raad.test', 'amountHalalas': 89901},
             201,
             null,
           ),
           (
-            {'recipientEmail': 'omar@raad.test', 'amountHalalas': 50000},
+            {'recipientEmail': 'omar@raad.test', 'amountHalalas': 1},
             422,
             'INSUFFICIENT_FUNDS',
           ),
@@ -304,8 +321,9 @@ void main() {
           expect(response.statusCode, status, reason: '$body');
           if (code != null) expect((response.data! as Map)['code'], code);
           expectConforms(response, '/transfers', 'post');
+          // U1 stores no outcome, so the header never appears.
           final replayed = response.headers.value('idempotency-replayed');
-          expect(replayed, status == 400 ? isNull : 'false', reason: '$body');
+          expect(replayed, isNull, reason: '$body');
         }
 
         final badKey = await call(
@@ -319,7 +337,7 @@ void main() {
       },
     );
 
-    test('history page', () async {
+    test('history page, with U1 truncation reported by hasMore', () async {
       await call('PUT', '/wallet');
       await call(
         'POST',
@@ -329,8 +347,25 @@ void main() {
       );
       final page = await call('GET', '/transfers');
       expect(page.statusCode, 200);
+      expect(page.data, containsPair('hasMore', false));
+      expect(page.data, containsPair('nextCursor', null));
+      expect(page.headers.value('x-u1-history-truncated'), 'false');
       expect(((page.data! as Map)['items'] as List), hasLength(1));
       expectConforms(page, '/transfers', 'get');
+
+      final short = await call('GET', '/transfers?limit=1');
+      await call(
+        'POST',
+        '/transfers',
+        body: {'recipientEmail': 'omar@raad.test', 'amountHalalas': 100},
+        key: 'contract-test-history-2',
+      );
+      final truncated = await call('GET', '/transfers?limit=1');
+      expect(short.data, containsPair('hasMore', false));
+      expect(truncated.data, containsPair('hasMore', true));
+      expect(truncated.data, containsPair('nextCursor', null));
+      expect(truncated.headers.value('x-u1-history-truncated'), 'true');
+      expectConforms(truncated, '/transfers', 'get');
     });
   });
 

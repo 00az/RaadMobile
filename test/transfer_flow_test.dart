@@ -179,15 +179,28 @@ void main() {
       expect(find.text('100'), findsOneWidget);
     });
 
-    testWidgets('an amount outside the allowed range is explained', (
+    testWidgets('U1 sends any positive amount, even below 1 SAR', (
       tester,
     ) async {
-      await openWallet(tester);
+      final harness = await openWallet(tester);
       await fillSendForm(tester, email: fakeOmar.email, amount: '0.50');
       await tapKey(tester, 'send.continue');
       await tapKey(tester, 'review.confirm');
 
+      expect(textOf(tester, 'result.balance'), '999.50 SAR');
+      expect(harness.backend.balanceOf(fakeOmar), 100050);
+    });
+
+    testWidgets('an amount outside the allowed range is explained (U2)', (
+      tester,
+    ) async {
+      final harness = await reviewHundredToOmar(tester);
+      harness.backend.answerNext(transfers, 422, 'AMOUNT_OUT_OF_RANGE');
+
+      await tapKey(tester, 'review.confirm');
+
       expect(textOf(tester, 'send.error'), Messages.amountOutOfRange);
+      expect(harness.backend.balanceOf(fakeSara), 100000);
     });
 
     testWidgets(

@@ -4,6 +4,8 @@ import 'transfer_list_item.dart';
 
 class TransferPage {
   const TransferPage({
+    /// U1 flag; true means this page is truncated and later pages require U2.
+    this.hasMore,
     required this.items,
 
     /// Opaque cursor for the next page. Non-null exactly when another page exists and null at the end. It expires 24 hours after the first page of its chain was issued.
@@ -16,6 +18,7 @@ class TransferPage {
       throw ArgumentError("Missing required property: nextCursor");
     }
     return TransferPage(
+      hasMore: json.containsKey("hasMore") ? json["hasMore"] as bool : null,
       items: (json["items"] as List<Object?>)
           .map(
             (item) => TransferListItem.fromJson(item as Map<String, Object?>),
@@ -29,18 +32,22 @@ class TransferPage {
     );
   }
 
+  /// U1 flag; true means this page is truncated and later pages require U2.
+  final bool? hasMore;
+
   final List<TransferListItem> items;
 
   /// Opaque cursor for the next page. Non-null exactly when another page exists and null at the end. It expires 24 hours after the first page of its chain was issued.
   final String? nextCursor;
 
-  static const _knownKeys = <String>{"items", "nextCursor"};
+  static const _knownKeys = <String>{"hasMore", "items", "nextCursor"};
 
   final Map<String, Object?> additionalProperties;
 
   Map<String, Object?> toJson() => {
     for (final entry in additionalProperties.entries)
       if (!_knownKeys.contains(entry.key)) entry.key: entry.value,
+    if (this.hasMore != null) "hasMore": this.hasMore,
     "items": this.items.map((item) => item.toJson()).toList(),
     "nextCursor": this.nextCursor,
   };

@@ -8,6 +8,6 @@ pins:
     file: openapi/raad-money-v1.yaml
     copy: contracts/pinned/c1-money-api/raad-money-v1.yaml
     tag: null
-    commit: 5dd760d2086c3b1fd2f017ed3999c07d0d4ee2d8
-    sha256: c222ca2e3a17ff9520a3a570696d23e3630f903ad87c61d3689f6d6dc51ff420
+    commit: 087487dddbb3515fd0b5967e11b1a58aa21a34c5
+    sha256: 6361bfa8ba54c4b2f669181cf1c937595bedc4335d940359f78ed9c18a9a5e9f
     note: Development pin; no release tag exists yet. Replace it with a contract/c1-money-api tag once one is created.

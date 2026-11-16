@@ -6,9 +6,16 @@
 /// response nesting of the pinned OpenAPI file. A contract test checks its
 /// answers against that file's schemas.
 ///
-/// It models the U1 walking-skeleton subset only. Like the U1 service, it
-/// checks the `Idempotency-Key` header but does not store or replay earlier
-/// outcomes, and it serves the first history page only.
+/// It follows the U1 partial pre-release of C1 (`1.0.0-u1.2`,
+/// `x-u1-conformance`), as the U1 service does:
+/// - it checks the `Idempotency-Key` header but stores and replays nothing,
+///   so it never sends `Idempotency-Replayed`;
+/// - any positive whole number of halalas is a valid amount (the 1 to 500 SAR
+///   range is U2), and zero or less is `400 VALIDATION_ERROR`;
+/// - history is the first page only: `nextCursor` stays null, and `hasMore`
+///   with the `X-U1-History-Truncated` header says when rows were left out.
+///
+/// [answerNext] produces any other refusal, such as the U2 codes.
 library;
 
 import 'dart:async';
@@ -92,8 +99,6 @@ final class FakeMoneyBackend implements HttpClientAdapter {
       FakeMoneyBackend()..openWallet(fakeOmar);
 
   static const int openingBalanceHalalas = 100000;
-  static const int minTransferHalalas = 100;
-  static const int maxTransferHalalas = 50000;
   static const String basePath = '/money/v1';
   static const String baseUrl = 'https://money.fake.raad.local$basePath';
 
@@ -104,6 +109,7 @@ final class FakeMoneyBackend implements HttpClientAdapter {
   final Map<String, _Wallet> _wallets = {};
   final List<_Transfer> _transfers = [];
   final Map<String, FakeFault> _faults = {};
+  final Map<String, (int, String)> _answers = {};
   final List<FakeRequest> requests = [];
   final Uuid _uuid = const Uuid();
   int _correlation = 0;
@@ -156,6 +162,11 @@ final class FakeMoneyBackend implements HttpClientAdapter {
   void failNext(String operation, FakeFault fault) =>
       _faults[operation] = fault;
 
+  /// Makes the next call to [operation] answer with this C1 error, for
+  /// refusals the U1 service does not produce itself.
+  void answerNext(String operation, int status, String code) =>
+      _answers[operation] = (status, code);
+
   int countOf(String operation) =>
       requests.where((request) => request.operation == operation).length;
 
@@ -183,6 +194,10 @@ final class FakeMoneyBackend implements HttpClientAdapter {
     );
     requests.add(request);
 
+    final answer = _answers.remove(request.operation);
+    if (answer != null) {
+      return _error(answer.$1, answer.$2, 'Refused by the test.');
+    }
     final fault = _faults.remove(request.operation);
     switch (fault) {
       case FakeFault.timeout:
@@ -299,6 +314,9 @@ final class FakeMoneyBackend implements HttpClientAdapter {
     }
     final email = _normalize(body['recipientEmail']! as String);
     final amount = body['amountHalalas']! as int;
+    if (amount <= 0) {
+      return _error(400, 'VALIDATION_ERROR', 'The request is invalid.');
+    }
     if (!_validEmail(email)) {
       return _error(400, 'VALIDATION_ERROR', 'Enter a complete email address.');
     }
@@ -306,41 +324,19 @@ final class FakeMoneyBackend implements HttpClientAdapter {
     if (senderWallet == null) {
       return _error(404, 'WALLET_NOT_FOUND', 'Set up your wallet first.');
     }
-    const replayed = {
-      'idempotency-replayed': ['false'],
-    };
     final recipient = _holderOf(email);
     if (recipient == null) {
       return _error(
         404,
         'RECIPIENT_NOT_FOUND',
         'No recipient has that address.',
-        headers: replayed,
-      );
-    }
-    if (amount < minTransferHalalas || amount > maxTransferHalalas) {
-      return _error(
-        422,
-        'AMOUNT_OUT_OF_RANGE',
-        'The amount is out of range.',
-        headers: replayed,
       );
     }
     if (recipient.sub == caller.sub) {
-      return _error(
-        409,
-        'SELF_TRANSFER',
-        'You cannot send to yourself.',
-        headers: replayed,
-      );
+      return _error(409, 'SELF_TRANSFER', 'You cannot send to yourself.');
     }
     if (senderWallet.balanceHalalas < amount) {
-      return _error(
-        422,
-        'INSUFFICIENT_FUNDS',
-        'The balance is too low.',
-        headers: replayed,
-      );
+      return _error(422, 'INSUFFICIENT_FUNDS', 'The balance is too low.');
     }
     final recipientWallet = _wallets[recipient.sub]!;
     senderWallet.balanceHalalas -= amount;
@@ -361,7 +357,7 @@ final class FakeMoneyBackend implements HttpClientAdapter {
       'amount': _moneyJson(amount),
       'completedAt': _instant(transfer.completedAt),
       'balanceAfter': _moneyJson(senderWallet.balanceHalalas),
-    }, headers: replayed);
+    });
   }
 
   ResponseBody _list(FakeAccount caller, Map<String, String> query) {
@@ -397,10 +393,14 @@ final class FakeMoneyBackend implements HttpClientAdapter {
         'completedAt': _instant(t.completedAt),
       };
     }).toList();
-    return _json(200, {
-      'items': page,
-      'nextCursor': mine.length > limit ? 'fake-opaque-cursor' : null,
-    });
+    final truncated = mine.length > limit;
+    return _json(
+      200,
+      {'items': page, 'nextCursor': null, 'hasMore': truncated},
+      headers: {
+        'x-u1-history-truncated': ['$truncated'],
+      },
+    );
   }
 
   // --------------------------------------------------------------- helpers

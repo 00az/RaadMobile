@@ -61,7 +61,12 @@ Production builds also pass `--dart-define=RAAD_BUILD_ENVIRONMENT=prd`, so they 
 
 ## API contract
 
-The wire source of truth is the C1 OpenAPI file, pinned byte for byte at `contracts/pinned/c1-money-api/raad-money-v1.yaml`. Its source commit and SHA-256 are recorded in `contracts/pins.yaml`. A test fails if the copy changes. No release tag exists yet, so the pin is the development commit `5dd760d` from `RaadMoneyService` branch `aidlc/u1-contract-handoff`.
+The wire source of truth is the C1 OpenAPI file, pinned byte for byte at `contracts/pinned/c1-money-api/raad-money-v1.yaml`. Its source commit and SHA-256 are recorded in `contracts/pins.yaml`. A test fails if the copy changes. No release tag exists yet, so the pin is the development commit `087487d` from `RaadMoneyService` branch `aidlc/u1-money-service`. That file is the U1 partial pre-release, version `1.0.0-u1.2`. Its `x-u1-conformance` block says what U1 leaves out:
+- no saved or replayed transfer outcomes;
+- the first history page only;
+- any positive whole amount, with the 1–500 SAR range coming in U2.
+
+The contract fake follows the same rules, and a test fails if that block changes.
 
 To move the pin once Engineer 1 tags a release:
 
@@ -83,7 +88,7 @@ The Dart client under `lib/api/generated/` is generated from the pinned copy by 
 | Balance | `GET /money/v1/wallet` | Used on refresh. It never creates a wallet: on `WALLET_NOT_FOUND` the app runs setup. |
 | Recipient | `POST /money/v1/recipients/resolve` | Sends the normalized email in the body, never in a URL. An unknown address shows "No RAAD user has that address." (AC3.5.1). |
 | Transfer | `POST /money/v1/transfers` | Sends `recipientEmail` and integer `amountHalalas`, plus a new `Idempotency-Key` for each review. The review screen shows the recipient, amount and balance after. Confirm works once per tap. Cancel sends nothing. A definite refusal returns to the form with the values kept. |
-| History | `GET /money/v1/transfers` | Shows the first page only and never follows `nextCursor`. If another page exists, the app says it is showing the latest transfers. |
+| History | `GET /money/v1/transfers` | Shows the first page only and never follows `nextCursor`. When `hasMore` is true (U1) or `nextCursor` is set (U2), the app says it is showing the latest transfers. |
 
 Other rules the app follows:
 - **Errors** are flat: top-level `code`, `message` and `correlationId`. The app branches on `code` and shows its own text. A code it does not know gets the generic message.

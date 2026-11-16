@@ -22,10 +22,15 @@ Map<String, Object?> itemJson({
   'completedAt': completedAt,
 };
 
-Widget historyOf(List<Map<String, Object?>> items, {String? nextCursor}) {
+Widget historyOf(
+  List<Map<String, Object?>> items, {
+  String? nextCursor,
+  bool? hasMore,
+}) {
   final page = TransferPage.fromJson({
     'items': items,
     'nextCursor': nextCursor,
+    'hasMore': ?hasMore,
   });
   return MaterialApp(
     home: Scaffold(
@@ -117,6 +122,24 @@ void main() {
     expect(HistoryEntry.formatTime(instant), expected);
     expect(find.textContaining(expected), findsOneWidget);
     expect(find.textContaining('RD-local-time'), findsOneWidget);
+  });
+
+  testWidgets('reads truncation from hasMore (U1) or nextCursor (U2)', (
+    tester,
+  ) async {
+    final one = [itemJson(id: '00000000-0000-4000-8000-000000000001')];
+
+    await tester.pumpWidget(historyOf(one, hasMore: true));
+    expect(byKey('history.truncated'), findsOneWidget);
+
+    await tester.pumpWidget(historyOf(one, hasMore: false));
+    expect(byKey('history.truncated'), findsNothing);
+
+    await tester.pumpWidget(historyOf(one));
+    expect(byKey('history.truncated'), findsNothing);
+
+    await tester.pumpWidget(historyOf(one, nextCursor: 'opaque'));
+    expect(byKey('history.truncated'), findsOneWidget);
   });
 
   testWidgets('says the list is partial when another page exists', (
