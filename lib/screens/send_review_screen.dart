@@ -118,7 +118,14 @@ class _SendReviewScreenState extends State<SendReviewScreen> {
     final theme = Theme.of(context);
     final projected = widget.balanceHalalas - widget.amountHalalas;
     return PopScope(
-      canPop: !_submitting,
+      // After an unknown outcome the transfer may already have gone through,
+      // so system Back must never return to the filled form, where a confirm
+      // would send it again with a new key. It goes to the wallet instead,
+      // like the "Check my balance and history" button.
+      canPop: !_submitting && !_outcomeUnknown,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _outcomeUnknown) _backToWallet();
+      },
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Review transfer'),

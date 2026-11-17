@@ -274,5 +274,41 @@ void main() {
       expect(textOf(tester, 'wallet.balance'), '900.00 SAR');
       expect(find.text('To Omar Saleh'), findsOneWidget);
     });
+
+    testWidgets('system Back after a lost answer goes to the wallet, never '
+        'back to a form that could send again', (tester) async {
+      final harness = await reviewHundredToOmar(tester);
+      harness.backend.failNext(transfers, FakeFault.lostResponseAfterCommit);
+
+      await tapKey(tester, 'review.confirm');
+      expect(byKey('review.outcomeUnknown'), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(byKey('review.confirm'), findsNothing);
+      expect(byKey('send.continue'), findsNothing);
+      expect(textOf(tester, 'wallet.balance'), '900.00 SAR');
+      expect(harness.backend.countOf(transfers), 1);
+    });
+
+    testWidgets('system Back while a transfer is sending does nothing', (
+      tester,
+    ) async {
+      final harness = await reviewHundredToOmar(tester);
+      final gate = Completer<void>();
+      harness.backend.transferGate = gate;
+
+      await tester.tap(byKey('review.confirm'));
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+
+      expect(byKey('review.confirm'), findsOneWidget);
+      expect(byKey('send.continue'), findsNothing);
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(harness.backend.countOf(transfers), 1);
+    });
   });
 }
