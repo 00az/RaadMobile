@@ -4,6 +4,7 @@ import '../app/app_services.dart';
 import '../app/raad_app.dart';
 import '../auth/auth_service.dart';
 import '../ui/messages.dart';
+import '../ui/raad_theme.dart';
 import 'wallet_screen.dart';
 
 /// US1.3: sign in with email and password.
@@ -24,6 +25,7 @@ class _SignInScreenState extends State<SignInScreen> {
   String? _passwordError;
   String? _error;
   bool _loading = false;
+  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -91,8 +93,58 @@ class _SignInScreenState extends State<SignInScreen> {
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           children: [
+            const SizedBox(height: 12),
+            Center(
+              child: Column(
+                children: [
+                  Container(
+                    height: 110,
+                    width: 110,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: RaadColors.cyanGlow,
+                          blurRadius: 30,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.asset(
+                      'assets/images/raad_logo.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.bolt_rounded,
+                        size: 64,
+                        color: RaadColors.cyanAccent,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'R  A  A  D',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 6,
+                      color: RaadColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Lightning-fast digital transfers',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: RaadColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
             TextField(
               key: const ValueKey('signIn.email'),
               controller: _email,
@@ -103,6 +155,11 @@ class _SignInScreenState extends State<SignInScreen> {
               decoration: InputDecoration(
                 labelText: 'Email',
                 errorText: _emailError,
+                prefixIcon: const Icon(
+                  Icons.alternate_email_rounded,
+                  color: RaadColors.textSecondary,
+                  size: 20,
+                ),
               ),
               onChanged: (_) => _clearErrors(),
             ),
@@ -111,34 +168,105 @@ class _SignInScreenState extends State<SignInScreen> {
               key: const ValueKey('signIn.password'),
               controller: _password,
               enabled: !_loading,
-              obscureText: true,
+              obscureText: _obscurePassword,
               autocorrect: false,
               enableSuggestions: false,
               autofillHints: const [AutofillHints.password],
               decoration: InputDecoration(
                 labelText: 'Password',
                 errorText: _passwordError,
+                prefixIcon: const Icon(
+                  Icons.lock_outline_rounded,
+                  color: RaadColors.textSecondary,
+                  size: 20,
+                ),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    color: RaadColors.textSecondary,
+                    size: 20,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                ),
               ),
               onChanged: (_) => _clearErrors(),
               onSubmitted: (_) => _submit(),
             ),
             const SizedBox(height: 16),
             if (_error != null)
-              Text(
-                _error!,
-                key: const ValueKey('signIn.error'),
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: RaadColors.error.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: RaadColors.error.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: RaadColors.error,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _error!,
+                        key: const ValueKey('signIn.error'),
+                        style: const TextStyle(
+                          color: RaadColors.error,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            const SizedBox(height: 16),
             FilledButton(
               key: const ValueKey('signIn.submit'),
               onPressed: _loading ? null : _submit,
               child: _loading
                   ? const SizedBox.square(
                       dimension: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: RaadColors.background,
+                      ),
                     )
                   : const Text('Sign in'),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton.icon(
+                onPressed: () {
+                  _email.text = 'sara@raad.test';
+                  _password.text = 'Local-preview-1';
+                  _clearErrors();
+                },
+                icon: const Icon(
+                  Icons.bolt_rounded,
+                  size: 16,
+                  color: RaadColors.cyanAccent,
+                ),
+                label: const Text(
+                  'Quick Fill Demo (Sara)',
+                  style: TextStyle(
+                    color: RaadColors.cyanAccent,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ),
           ],
         ),

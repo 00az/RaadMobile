@@ -29,6 +29,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/
 
 # Dart client for the Money API (C1), generated only from the pinned copy.
 # Regenerate with `dart run swagger_parser`; CI runs it with `--check`.

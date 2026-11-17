@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../screens/sign_in_screen.dart';
 import '../screens/wallet_screen.dart';
+import '../ui/raad_theme.dart';
 import 'app_services.dart';
 
 class RaadApp extends StatelessWidget {
@@ -16,9 +17,7 @@ class RaadApp extends StatelessWidget {
       child: MaterialApp(
         title: 'RAAD',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0B6E4F)),
-        ),
+        theme: RaadTheme.darkTheme,
         home: const AuthGate(),
       ),
     );

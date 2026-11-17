@@ -7,6 +7,7 @@ import '../app/app_services.dart';
 import '../app/raad_app.dart';
 import '../money/halalas.dart';
 import '../ui/messages.dart';
+import '../ui/raad_theme.dart';
 import 'send_result_screen.dart';
 
 /// Returned to the send form when the transfer was definitely refused, so the
@@ -126,34 +127,99 @@ class _SendReviewScreenState extends State<SendReviewScreen> {
         ),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             children: [
-              _row('To', widget.recipient.displayName, 'review.name'),
-              _row('Email', widget.recipient.email, 'review.email'),
-              _row(
-                'Amount',
-                formatHalalas(widget.amountHalalas),
-                'review.amount',
+              Center(
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: RaadColors.surfaceElevated,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: RaadColors.cyanAccent, width: 2),
+                    boxShadow: const [
+                      BoxShadow(color: RaadColors.cyanGlow, blurRadius: 20),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      widget.recipient.displayName.isNotEmpty
+                          ? widget.recipient.displayName[0].toUpperCase()
+                          : 'R',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: RaadColors.cyanAccent,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              _row(
-                'Balance after',
-                formatHalalas(projected),
-                'review.projectedBalance',
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: RaadColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: RaadColors.cardBorder),
+                ),
+                child: Column(
+                  children: [
+                    _row('To', widget.recipient.displayName, 'review.name'),
+                    const Divider(color: RaadColors.cardBorder, height: 20),
+                    _row('Email', widget.recipient.email, 'review.email'),
+                    const Divider(color: RaadColors.cardBorder, height: 20),
+                    _row(
+                      'Amount',
+                      formatHalalas(widget.amountHalalas),
+                      'review.amount',
+                      isHighlight: true,
+                    ),
+                    const Divider(color: RaadColors.cardBorder, height: 20),
+                    _row(
+                      'Balance after',
+                      formatHalalas(projected),
+                      'review.projectedBalance',
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
               if (_notice != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
-                  child: Text(_notice!, key: const ValueKey('review.notice')),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: RaadColors.cyanAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: RaadColors.cyanAccent.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      _notice!,
+                      key: const ValueKey('review.notice'),
+                      style: const TextStyle(
+                        color: RaadColors.cyanAccent,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
                 ),
               if (_outcomeUnknown) ...[
                 Text(
                   Messages.outcomeUnknownTitle,
                   key: const ValueKey('review.outcomeUnknown'),
-                  style: theme.textTheme.titleMedium,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                const Text(Messages.outcomeUnknownBody),
+                const Text(
+                  Messages.outcomeUnknownBody,
+                  style: TextStyle(color: RaadColors.textSecondary),
+                ),
                 const SizedBox(height: 16),
                 FilledButton(
                   key: const ValueKey('review.checkWallet'),
@@ -167,11 +233,14 @@ class _SendReviewScreenState extends State<SendReviewScreen> {
                   child: _submitting
                       ? const SizedBox.square(
                           dimension: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: RaadColors.background,
+                          ),
                         )
                       : const Text('Confirm and send'),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 TextButton(
                   key: const ValueKey('review.cancel'),
                   onPressed: _submitting
@@ -187,16 +256,40 @@ class _SendReviewScreenState extends State<SendReviewScreen> {
     );
   }
 
-  Widget _row(String label, String value, String key) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(width: 120, child: Text(label)),
-          Expanded(child: Text(value, key: ValueKey(key))),
-        ],
-      ),
+  Widget _row(
+    String label,
+    String value,
+    String key, {
+    bool isHighlight = false,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: RaadColors.textSecondary,
+              fontSize: 14,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            key: ValueKey(key),
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: isHighlight
+                  ? RaadColors.cyanAccent
+                  : RaadColors.textPrimary,
+              fontWeight: isHighlight ? FontWeight.w800 : FontWeight.w600,
+              fontSize: isHighlight ? 17 : 14,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

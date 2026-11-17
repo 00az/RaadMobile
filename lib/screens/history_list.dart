@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../api/generated/money_api_client.dart';
 import '../money/halalas.dart';
+import '../ui/raad_theme.dart';
 
 /// US4.1 and US4.2: the first page of completed sent and received transfers.
 class HistoryList extends StatelessWidget {
@@ -21,37 +22,82 @@ class HistoryList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (loading && page == null) {
       return const Padding(
-        padding: EdgeInsets.all(24),
+        padding: EdgeInsets.all(32),
         child: Center(
-          child: CircularProgressIndicator(key: ValueKey('history.loading')),
+          child: CircularProgressIndicator(
+            key: ValueKey('history.loading'),
+            color: RaadColors.cyanAccent,
+          ),
         ),
       );
     }
     if (error != null) {
       return Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(error!, key: const ValueKey('history.error')),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: RaadColors.error.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: RaadColors.error.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.error_outline_rounded,
+                color: RaadColors.error,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  error!,
+                  key: const ValueKey('history.error'),
+                  style: const TextStyle(color: RaadColors.error, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
     final items = [...?page?.items]..sort(_newestFirst);
     if (items.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Text('No transfers yet.', key: ValueKey('history.empty')),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: RaadColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: RaadColors.cardBorder),
+          ),
+          child: const Center(
+            child: Text(
+              'No transfers yet.',
+              key: ValueKey('history.empty'),
+              style: TextStyle(color: RaadColors.textSecondary, fontSize: 14),
+            ),
+          ),
+        ),
       );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final item in items) HistoryEntry(item: item),
-        // U1 shows the first page only and does not claim it is complete.
         if (page?.nextCursor != null)
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
               'Showing your latest ${items.length} transfers.',
               key: const ValueKey('history.truncated'),
-              style: Theme.of(context).textTheme.bodySmall,
+              style: const TextStyle(
+                color: RaadColors.textMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
       ],
@@ -86,14 +132,59 @@ class HistoryEntry extends StatelessWidget {
         : (received
               ? formatHalalas(amount, signed: true)
               : formatHalalas(amount));
-    return ListTile(
-      key: ValueKey('history.item.${item.transferId}'),
-      leading: Icon(sent ? Icons.north_east : Icons.south_west),
-      title: Text(title),
-      subtitle: Text('${formatTime(item.completedAt)} · ${item.reference}'),
-      trailing: Text(
-        amountText,
-        key: ValueKey('history.amount.${item.transferId}'),
+
+    final badgeColor = received
+        ? RaadColors.success
+        : (sent ? RaadColors.textSecondary : RaadColors.cyanAccent);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: RaadColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: RaadColors.cardBorder),
+      ),
+      child: ListTile(
+        key: ValueKey('history.item.${item.transferId}'),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: badgeColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+          ),
+          child: Icon(
+            sent ? Icons.north_east : Icons.south_west,
+            color: badgeColor,
+            size: 20,
+          ),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: RaadColors.textPrimary,
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            '${formatTime(item.completedAt)} · ${item.reference}',
+            style: const TextStyle(color: RaadColors.textMuted, fontSize: 12),
+          ),
+        ),
+        trailing: Text(
+          amountText,
+          key: ValueKey('history.amount.${item.transferId}'),
+          style: TextStyle(
+            color: received ? RaadColors.success : RaadColors.textPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+          ),
+        ),
       ),
     );
   }
