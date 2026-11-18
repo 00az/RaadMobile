@@ -4,7 +4,7 @@ import 'transfer_list_item.dart';
 
 class TransferPage {
   const TransferPage({
-    /// U1 flag; true means this page is truncated and later pages require U2.
+    /// True exactly when nextCursor is non-null, that is when another page of the same snapshot exists. Kept for clients built against the U1 pre-release; new clients follow nextCursor.
     this.hasMore,
     required this.items,
 
@@ -32,7 +32,7 @@ class TransferPage {
     );
   }
 
-  /// U1 flag; true means this page is truncated and later pages require U2.
+  /// True exactly when nextCursor is non-null, that is when another page of the same snapshot exists. Kept for clients built against the U1 pre-release; new clients follow nextCursor.
   final bool? hasMore;
 
   final List<TransferListItem> items;

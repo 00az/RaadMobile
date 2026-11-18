@@ -17,16 +17,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:raad_mobile/api/money_service.dart';
 import 'package:raad_mobile/app/app_services.dart';
+import 'package:raad_mobile/app/connectivity.dart';
+import 'package:raad_mobile/app/protected_store.dart';
 import 'package:raad_mobile/app/raad_app.dart';
 import 'package:raad_mobile/auth/cognito_auth_service.dart';
 import 'package:raad_mobile/auth/session_store.dart';
+import 'package:raad_mobile/config/build_environment.dart';
 import 'package:raad_mobile/config/environment_config.dart';
 import 'package:raad_mobile/dev/fake_accounts.dart';
 import 'package:raad_mobile/dev/fake_auth_service.dart';
 import 'package:raad_mobile/dev/fake_money_backend.dart';
 import 'package:raad_mobile/money/halalas.dart';
+import 'package:raad_mobile/screens/history_list.dart';
 
 const target = String.fromEnvironment('RAAD_E2E_TARGET', defaultValue: 'fake');
 
@@ -39,7 +42,7 @@ final class Account {
 
 Future<(AppServices, Account, Account)> setUpTarget() async {
   if (target == 'dev') {
-    final config = EnvironmentConfig.fromDartDefines();
+    final config = configFromBuild();
     if (config.environment != RaadEnvironment.dev) {
       throw StateError('The walking skeleton runs against dev only.');
     }
@@ -64,29 +67,29 @@ Future<(AppServices, Account, Account)> setUpTarget() async {
     final store = SecureSessionStore();
     await store.clear();
     final auth = CognitoAuthService(config: config, store: store);
-    final money = MoneyService.create(
-      baseUrl: config.moneyApiBaseUrl,
-      auth: auth,
-    );
     return (
-      AppServices(
+      AppServices.create(
         auth: auth,
-        money: money,
+        moneyBaseUrl: config.moneyApiBaseUrl,
+        environmentName: config.environment.name,
         environmentChip: config.environment.chipLabel,
+        store: MemoryProtectedStore(),
       ),
       sender,
       recipient,
     );
   }
-  final auth = FakeAuthService();
-  final backend = FakeMoneyBackend()..openWallet(fakeOmar);
-  final money = MoneyService.create(
-    baseUrl: FakeMoneyBackend.baseUrl,
-    auth: auth,
-    adapter: backend,
-  );
+  final directory = FakeDirectory();
   return (
-    AppServices(auth: auth, money: money, environmentChip: 'LOCAL'),
+    AppServices.create(
+      auth: FakeAuthService(directory: directory),
+      moneyBaseUrl: FakeMoneyBackend.baseUrl,
+      moneyAdapter: FakeMoneyBackend.preview(directory: directory),
+      environmentName: 'local',
+      environmentChip: 'LOCAL',
+      store: MemoryProtectedStore(),
+      connectivity: ManualConnectivitySignal(),
+    ),
     Account(fakeSara.email, fakeSara.password),
     Account(fakeOmar.email, fakeOmar.password),
   );
@@ -112,15 +115,26 @@ String textOf(WidgetTester tester, String key) =>
     tester.widget<Text>(byKey(key)).data!;
 
 Future<void> tapKey(WidgetTester tester, String key) async {
+  // Let a route transition finish: taps are absorbed while it runs.
+  await tester.pump(const Duration(milliseconds: 600));
   await tester.ensureVisible(byKey(key));
   await tester.tap(byKey(key));
   await tester.pump();
 }
 
+/// Types into a field, then closes the software keyboard so it does not
+/// cover the rest of the form on a simulator.
+Future<void> enter(WidgetTester tester, String key, String text) async {
+  await tester.ensureVisible(byKey(key));
+  await tester.enterText(byKey(key), text);
+  FocusManager.instance.primaryFocus?.unfocus();
+  await tester.pump(const Duration(milliseconds: 600));
+}
+
 Future<void> signIn(WidgetTester tester, Account account) async {
   await waitFor(tester, byKey('signIn.submit'));
-  await tester.enterText(byKey('signIn.email'), account.email);
-  await tester.enterText(byKey('signIn.password'), account.password);
+  await enter(tester, 'signIn.email', account.email);
+  await enter(tester, 'signIn.password', account.password);
   await tapKey(tester, 'signIn.submit');
   await waitFor(tester, byKey('wallet.balance'));
 }
@@ -147,8 +161,8 @@ void main() {
       // They enter the recipient and amount, then review before sending.
       await tapKey(tester, 'wallet.send');
       await waitFor(tester, byKey('send.email'));
-      await tester.enterText(byKey('send.email'), recipient.email);
-      await tester.enterText(byKey('send.amount'), '100');
+      await enter(tester, 'send.email', recipient.email);
+      await enter(tester, 'send.amount', '100');
       await tapKey(tester, 'send.continue');
       await waitFor(tester, byKey('review.confirm'));
       expect(textOf(tester, 'review.email'), recipient.email.toLowerCase());
@@ -170,7 +184,7 @@ void main() {
       await tapKey(tester, 'result.done');
       await waitFor(tester, find.textContaining(reference));
       expect(balanceShown(tester), before - 10000);
-      expect(find.text('To $recipientName'), findsWidgets);
+      expect(find.text('Sent to $recipientName'), findsWidgets);
 
       // The recipient signs in and sees the same transfer as received.
       await tapKey(tester, 'wallet.signOut');
@@ -178,10 +192,13 @@ void main() {
       await waitFor(tester, find.textContaining(reference));
       final entry = find.ancestor(
         of: find.textContaining(reference),
-        matching: find.byType(ListTile),
+        matching: find.byType(HistoryEntry),
       );
       expect(
-        find.descendant(of: entry, matching: find.textContaining('From ')),
+        find.descendant(
+          of: entry,
+          matching: find.textContaining('Received from '),
+        ),
         findsOneWidget,
       );
       expect(

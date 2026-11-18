@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:raad_mobile/app/protected_store.dart';
 import 'package:raad_mobile/auth/session_store.dart';
 import 'package:raad_mobile/main.dart' as app;
 import 'package:raad_mobile/main_fake.dart' as preview;
@@ -52,5 +53,15 @@ void main() {
       'raad.session.accessToken': 'a1',
     });
     expect(await SecureSessionStore().read(), isNull);
+  });
+
+  test('private records live in the secure store and can be removed', () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final store = SecureProtectedStore();
+    expect(await store.read('raad.pending.dev.sub'), isNull);
+    await store.write('raad.pending.dev.sub', '{"v":1}');
+    expect(await store.read('raad.pending.dev.sub'), '{"v":1}');
+    await store.delete('raad.pending.dev.sub');
+    expect(await store.read('raad.pending.dev.sub'), isNull);
   });
 }

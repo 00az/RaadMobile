@@ -6,6 +6,9 @@
 /// `--dart-define-from-file=<c4 file>`. A missing, extra, secret-looking or
 /// cross-environment value is refused: the app never falls back to another
 /// environment.
+///
+/// This file is plain Dart so `tool/check_env_config.dart` can use it
+/// outside Flutter; `build_environment.dart` reads the build's own values.
 library;
 
 enum RaadEnvironment {
@@ -59,6 +62,13 @@ final class EnvironmentConfig {
     'authClientId',
   ];
 
+  /// Values no non-secret configuration holds: an AWS access key ID, a
+  /// private key block or a client secret pasted into a value.
+  static final RegExp _secretValue = RegExp(
+    r'(AKIA|ASIA)[0-9A-Z]{16}|-----BEGIN|PRIVATE KEY|aws_secret',
+    caseSensitive: false,
+  );
+
   static const List<String> _secretMarkers = [
     'secret',
     'password',
@@ -107,6 +117,11 @@ final class EnvironmentConfig {
       final value = json[key];
       if (value is! String || value.isEmpty) {
         throw EnvironmentConfigException('Missing value for "$key".');
+      }
+      if (_secretValue.hasMatch(value)) {
+        throw EnvironmentConfigException(
+          'The value of "$key" looks like a secret; C4 holds no secrets.',
+        );
       }
       return value;
     }
@@ -170,29 +185,66 @@ final class EnvironmentConfig {
     );
   }
 
-  /// Reads the C4 keys supplied with `--dart-define-from-file`.
-  ///
-  /// `RAAD_BUILD_ENVIRONMENT`, when set by the build flavour, names the only
-  /// environment this build accepts.
-  static EnvironmentConfig fromDartDefines() {
-    const values = <String, String>{
-      'configVersion': String.fromEnvironment('configVersion'),
-      'environment': String.fromEnvironment('environment'),
-      'apiBaseUrl': String.fromEnvironment('apiBaseUrl'),
-      'moneyBasePath': String.fromEnvironment('moneyBasePath'),
-      'authIssuer': String.fromEnvironment('authIssuer'),
-      'authAudience': String.fromEnvironment('authAudience'),
-      'authClientId': String.fromEnvironment('authClientId'),
-    };
-    const buildEnvironment = String.fromEnvironment('RAAD_BUILD_ENVIRONMENT');
+  /// Refuses [config] when it shares an API address, issuer, audience or
+  /// client ID with the configuration of another environment: each
+  /// environment has its own sign-in and API, so a shared value means a file
+  /// was copied across environments.
+  static void refuseSharedValues(
+    EnvironmentConfig config,
+    Iterable<EnvironmentConfig> others,
+  ) {
+    for (final other in others) {
+      if (other.environment == config.environment) {
+        throw EnvironmentConfigException(
+          'Two files are for ${config.environment.name}.',
+        );
+      }
+      final shared = <String>[
+        if (other.apiBaseUrl.host == config.apiBaseUrl.host) 'apiBaseUrl',
+        if (other.authIssuer == config.authIssuer) 'authIssuer',
+        if (other.authAudience == config.authAudience) 'authAudience',
+        if (other.authClientId == config.authClientId) 'authClientId',
+      ];
+      if (shared.isNotEmpty) {
+        throw EnvironmentConfigException(
+          '${shared.join(', ')} of ${config.environment.name} is the same as '
+          'in ${other.environment.name}.',
+        );
+      }
+    }
+  }
+
+  /// Validates the C4 values a build was given. The build flavour (`dev`,
+  /// `stg` or `prd`) names the only environment the build accepts; so does
+  /// `RAAD_BUILD_ENVIRONMENT` when it is set, and the two must agree.
+  static EnvironmentConfig fromDefines(
+    Map<String, String> values, {
+    String? flavor,
+    String buildEnvironment = '',
+  }) {
     RaadEnvironment? expected;
-    if (buildEnvironment.isNotEmpty) {
-      expected = RaadEnvironment.tryParse(buildEnvironment);
+    if (flavor != null && flavor.isNotEmpty) {
+      expected = RaadEnvironment.tryParse(flavor);
       if (expected == null) {
+        throw EnvironmentConfigException(
+          'The build flavour "$flavor" is not dev, stg or prd.',
+        );
+      }
+    }
+    if (buildEnvironment.isNotEmpty) {
+      final named = RaadEnvironment.tryParse(buildEnvironment);
+      if (named == null) {
         throw const EnvironmentConfigException(
           'RAAD_BUILD_ENVIRONMENT must be dev, stg or prd.',
         );
       }
+      if (expected != null && named != expected) {
+        throw EnvironmentConfigException(
+          'The ${expected.name} flavour was built with '
+          'RAAD_BUILD_ENVIRONMENT=${named.name}.',
+        );
+      }
+      expected = named;
     }
     return parse(values, expectedEnvironment: expected);
   }

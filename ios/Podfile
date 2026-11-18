@@ -8,6 +8,16 @@ project 'Runner', {
   'Debug' => :debug,
   'Profile' => :release,
   'Release' => :release,
+  # One set per environment flavour (dev, stg, prd); see the schemes.
+  'Debug-dev' => :debug,
+  'Debug-stg' => :debug,
+  'Debug-prd' => :debug,
+  'Profile-dev' => :release,
+  'Profile-stg' => :release,
+  'Profile-prd' => :release,
+  'Release-dev' => :release,
+  'Release-stg' => :release,
+  'Release-prd' => :release,
 }
 
 def flutter_root

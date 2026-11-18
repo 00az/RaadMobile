@@ -3,35 +3,60 @@ import 'package:flutter/material.dart';
 import '../app/app_services.dart';
 import '../app/raad_app.dart';
 import '../auth/auth_service.dart';
+import '../dev/fake_accounts.dart';
+import '../l10n/app_localizations.dart';
 import '../ui/messages.dart';
 import '../ui/raad_theme.dart';
+import '../widgets/form_fields.dart';
+import '../widgets/language_selector.dart';
+import '../widgets/status_banner.dart';
+import 'confirm_email_screen.dart';
+import 'forgot_password_screen.dart';
+import 'sign_up_screen.dart';
 import 'wallet_screen.dart';
 
-/// US1.3: sign in with email and password.
-class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key, this.notice});
+/// A note shown on arrival at sign-in.
+enum SignInNotice {
+  sessionEnded,
+  signInAgainForSecurity,
+  emailConfirmed,
+  passwordChanged;
 
-  /// A message to show on arrival, such as an ended session.
-  final String? notice;
+  String text(AppLocalizations l10n) => switch (this) {
+    sessionEnded => l10n.signInNoticeSessionEnded,
+    signInAgainForSecurity => l10n.signInNoticeIdle,
+    emailConfirmed => l10n.signInNoticeEmailConfirmed,
+    passwordChanged => l10n.signInNoticePasswordChanged,
+  };
+}
+
+/// S1 (US1.3, US1.6): sign in with email and password.
+///
+/// Wrong password, unknown email and unconfirmed account all show the same
+/// message (AC1.3.2, AC1.3.3); a rate limit has its own. The way to enter a
+/// confirmation code is here for every address, so an unconfirmed account
+/// can still be confirmed.
+class SignInScreen extends StatefulWidget {
+  const SignInScreen({super.key, this.notice, this.email = ''});
+
+  /// A note to show on arrival, such as an ended session.
+  final SignInNotice? notice;
+
+  /// The address to start with, for example after confirming it.
+  final String email;
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  final _email = TextEditingController();
+  late final _email = TextEditingController(text: widget.email);
   final _password = TextEditingController();
   String? _emailError;
   String? _passwordError;
   String? _error;
+  late SignInNotice? _notice = widget.notice;
   bool _loading = false;
-  bool _obscurePassword = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _error = widget.notice;
-  }
 
   @override
   void dispose() {
@@ -42,16 +67,18 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> _submit() async {
     if (_loading) return;
+    final l10n = AppLocalizations.of(context);
     final emailError = _email.text.trim().isEmpty
-        ? 'Enter your email address.'
-        : (looksLikeEmail(_email.text) ? null : 'Enter a valid email address.');
+        ? l10n.signInEmailRequired
+        : (looksLikeEmail(_email.text) ? null : l10n.signInEmailInvalid);
     final passwordError = _password.text.isEmpty
-        ? 'Enter your password.'
+        ? l10n.signInPasswordRequired
         : null;
     setState(() {
       _emailError = emailError;
       _passwordError = passwordError;
       _error = null;
+      _notice = null;
     });
     if (emailError != null || passwordError != null) return;
 
@@ -59,10 +86,11 @@ class _SignInScreenState extends State<SignInScreen> {
     final services = AppServices.of(context);
     final navigator = Navigator.of(context);
     try {
-      await services.auth.signIn(
+      await services.session.signIn(
         email: normalizeEmail(_email.text),
         password: _password.text,
       );
+      _password.clear();
       navigator.pushReplacement(
         MaterialPageRoute<void>(builder: (_) => const WalletScreen()),
       );
@@ -70,7 +98,7 @@ class _SignInScreenState extends State<SignInScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = Messages.forAuthFailure(failure.code);
+        _error = Messages.forAuthFailure(l10n, failure.code);
       });
     }
   }
@@ -84,191 +112,169 @@ class _SignInScreenState extends State<SignInScreen> {
     });
   }
 
+  void _open(Widget screen) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final services = AppServices.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sign in to RAAD'),
+        title: Text(l10n.signInTitle),
         actions: const [EnvironmentChip()],
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          children: [
-            const SizedBox(height: 12),
-            Center(
-              child: Column(
+        child: AutofillGroup(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            children: [
+              const SizedBox(height: 8),
+              const RaadLockup(),
+              const SizedBox(height: 8),
+              Text(
+                l10n.signInTagline,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: RaadColors.textSecondary,
+                ),
+              ),
+              const Center(child: LanguageButton()),
+              const SizedBox(height: 16),
+              const OfflineBanner(),
+              if (_notice case final notice?)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: StatusBanner(
+                    kind: StatusKind.info,
+                    text: notice.text(l10n),
+                    textKey: const ValueKey('signIn.notice'),
+                  ),
+                ),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: StatusBanner(
+                    kind: StatusKind.error,
+                    text: _error!,
+                    textKey: const ValueKey('signIn.error'),
+                  ),
+                ),
+              EmailField(
+                key: const ValueKey('signIn.email'),
+                controller: _email,
+                label: l10n.emailLabel,
+                errorText: _emailError,
+                enabled: !_loading,
+                onChanged: (_) => _clearErrors(),
+              ),
+              const SizedBox(height: 16),
+              PasswordField(
+                key: const ValueKey('signIn.password'),
+                controller: _password,
+                label: l10n.passwordLabel,
+                errorText: _passwordError,
+                enabled: !_loading,
+                onChanged: (_) => _clearErrors(),
+                onSubmitted: (_) => _submit(),
+              ),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton(
+                  key: const ValueKey('signIn.forgot'),
+                  onPressed: () => _open(
+                    ForgotPasswordScreen(email: normalizeEmail(_email.text)),
+                  ),
+                  child: Text(l10n.signInForgot),
+                ),
+              ),
+              const SizedBox(height: 8),
+              BusyButton(
+                key: const ValueKey('signIn.submit'),
+                label: l10n.signInSubmit,
+                busyLabel: l10n.signInBusy,
+                busy: _loading,
+                onPressed: _submit,
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Container(
-                    height: 110,
-                    width: 110,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: RaadColors.cyanGlow,
-                          blurRadius: 30,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Image.asset(
-                      'assets/images/raad_logo.jpg',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.bolt_rounded,
-                        size: 64,
-                        color: RaadColors.cyanAccent,
-                      ),
-                    ),
+                  Text(
+                    l10n.signInNewToRaad,
+                    style: const TextStyle(color: RaadColors.textSecondary),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'R  A  A  D',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 6,
-                      color: RaadColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Lightning-fast digital transfers',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: RaadColors.textSecondary,
-                    ),
+                  TextButton(
+                    key: const ValueKey('signIn.signUp'),
+                    onPressed: () => _open(const SignUpScreen()),
+                    child: Text(l10n.signInCreateAccount),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 32),
-            TextField(
-              key: const ValueKey('signIn.email'),
-              controller: _email,
-              enabled: !_loading,
-              keyboardType: TextInputType.emailAddress,
-              autocorrect: false,
-              autofillHints: const [AutofillHints.email],
-              decoration: InputDecoration(
-                labelText: 'Email',
-                errorText: _emailError,
-                prefixIcon: const Icon(
-                  Icons.alternate_email_rounded,
-                  color: RaadColors.textSecondary,
-                  size: 20,
+              Center(
+                child: TextButton(
+                  key: const ValueKey('signIn.haveCode'),
+                  onPressed: () => _open(const ConfirmEmailScreen()),
+                  child: Text(l10n.signInHaveCode),
                 ),
               ),
-              onChanged: (_) => _clearErrors(),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              key: const ValueKey('signIn.password'),
-              controller: _password,
-              enabled: !_loading,
-              obscureText: _obscurePassword,
-              autocorrect: false,
-              enableSuggestions: false,
-              autofillHints: const [AutofillHints.password],
-              decoration: InputDecoration(
-                labelText: 'Password',
-                errorText: _passwordError,
-                prefixIcon: const Icon(
-                  Icons.lock_outline_rounded,
-                  color: RaadColors.textSecondary,
-                  size: 20,
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscurePassword
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: RaadColors.textSecondary,
-                    size: 20,
-                  ),
-                  onPressed: () =>
-                      setState(() => _obscurePassword = !_obscurePassword),
-                ),
-              ),
-              onChanged: (_) => _clearErrors(),
-              onSubmitted: (_) => _submit(),
-            ),
-            const SizedBox(height: 16),
-            if (_error != null)
-              Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: RaadColors.error.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: RaadColors.error.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.error_outline_rounded,
-                      color: RaadColors.error,
-                      size: 20,
+              if (services.demoShortcuts)
+                Center(
+                  child: TextButton.icon(
+                    key: const ValueKey('signIn.demoFill'),
+                    onPressed: () {
+                      _email.text = fakeSara.email;
+                      _password.text = fakeSara.password;
+                      _clearErrors();
+                    },
+                    icon: const Icon(
+                      Icons.bolt_rounded,
+                      size: 16,
+                      color: RaadColors.cyanAccent,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _error!,
-                        key: const ValueKey('signIn.error'),
-                        style: const TextStyle(
-                          color: RaadColors.error,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    label: Text(
+                      l10n.signInDemoFill,
+                      style: const TextStyle(
+                        color: RaadColors.cyanAccent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ],
-                ),
-              ),
-            FilledButton(
-              key: const ValueKey('signIn.submit'),
-              onPressed: _loading ? null : _submit,
-              child: _loading
-                  ? const SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: RaadColors.background,
-                      ),
-                    )
-                  : const Text('Sign in'),
-            ),
-            const SizedBox(height: 12),
-            Center(
-              child: TextButton.icon(
-                onPressed: () {
-                  _email.text = 'sara@raad.test';
-                  _password.text = 'Local-preview-1';
-                  _clearErrors();
-                },
-                icon: const Icon(
-                  Icons.bolt_rounded,
-                  size: 16,
-                  color: RaadColors.cyanAccent,
-                ),
-                label: const Text(
-                  'Quick Fill Demo (Sara)',
-                  style: TextStyle(
-                    color: RaadColors.cyanAccent,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-            ),
-          ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The person's horizontal lockup, the bolt and "رعد RAAD", read as "RAAD".
+class RaadLockup extends StatelessWidget {
+  const RaadLockup({super.key, this.height = 96});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      image: true,
+      label: AppLocalizations.of(context).logoLabel,
+      child: Center(
+        child: Image.asset(
+          'assets/images/raad_lockup.webp',
+          height: height,
+          fit: BoxFit.contain,
+          excludeFromSemantics: true,
+          errorBuilder: (context, error, stackTrace) => const Icon(
+            Icons.bolt_rounded,
+            size: 64,
+            color: RaadColors.cyanAccent,
+          ),
         ),
       ),
     );

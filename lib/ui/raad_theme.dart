@@ -10,9 +10,18 @@ abstract final class RaadColors {
   static const electricBlue = Color(0xFF38B6FF);
   static const textPrimary = Color(0xFFF8FAFC);
   static const textSecondary = Color(0xFF94A3B8);
-  static const textMuted = Color(0xFF64748B);
+
+  /// Lightened from 0xFF64748B (3.7 to 1) so small text keeps at least
+  /// 4.5 to 1 on every dark surface (accessibility checklist P1).
+  static const textMuted = Color(0xFF7F8CA1);
   static const success = Color(0xFF10B981);
   static const error = Color(0xFFFF5252);
+
+  /// Out-of-date and uncertain states; always shown with an icon and text.
+  static const warning = Color(0xFFFBBF24);
+
+  /// The services tiles' accent.
+  static const gold = Color(0xFFFBBF24);
 }
 
 final class RaadTheme {

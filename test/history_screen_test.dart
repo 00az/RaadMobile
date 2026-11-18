@@ -1,191 +1,309 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:raad_mobile/api/generated/money_api_client.dart';
 import 'package:raad_mobile/dev/fake_accounts.dart';
 import 'package:raad_mobile/dev/fake_money_backend.dart';
 import 'package:raad_mobile/screens/history_list.dart';
+import 'package:raad_mobile/screens/history_screen.dart';
+import 'package:raad_mobile/ui/formatting.dart';
 
 import 'support/harness.dart';
 
-Map<String, Object?> itemJson({
+const listTransfers = 'GET /transfers';
+
+TransferListItem item({
   required String id,
   String direction = 'sent',
   int amount = 10000,
   String completedAt = '2026-11-12T08:30:00Z',
-}) => {
+  Map<String, Object?> extra = const {},
+}) => TransferListItem.fromJson({
   'transferId': id,
-  'reference': 'RD-$id',
+  'reference': 'R-$id',
   'direction': direction,
   'otherParty': {'displayName': 'Omar Saleh', 'email': 'omar@raad.test'},
   'amount': {'amountHalalas': amount, 'currency': 'SAR'},
   'completedAt': completedAt,
-};
+  ...extra,
+});
 
-Widget historyOf(
-  List<Map<String, Object?>> items, {
-  String? nextCursor,
-  bool? hasMore,
-}) {
-  final page = TransferPage.fromJson({
-    'items': items,
-    'nextCursor': nextCursor,
-    'hasMore': ?hasMore,
-  });
-  return MaterialApp(
-    home: Scaffold(
-      body: SingleChildScrollView(
-        child: HistoryList(page: page, loading: false, error: null),
-      ),
+Future<Harness> openHistory(
+  WidgetTester tester, {
+  void Function(Harness harness)? seed,
+}) async {
+  final harness = Harness()..signedInAsSara();
+  // History is opened from a wallet that set-up has already created.
+  harness.backend.openWallet(fakeSara);
+  seed?.call(harness);
+  await harness.session.restore();
+  await tester.pumpWidget(harness.screen(const HistoryScreen()));
+  await tester.pumpAndSettle();
+  return harness;
+}
+
+void seedMany(Harness harness, int count) {
+  for (var i = 0; i < count; i++) {
+    harness.backend.seedTransfer(
+      sender: fakeOmar,
+      recipient: fakeSara,
+      amountHalalas: 100 + i,
+      completedAt: DateTime.utc(2026, 1, 1).add(Duration(minutes: i)),
+    );
+  }
+}
+
+/// Scrolls the lazily built history until [key] is on screen.
+Future<void> scrollTo(WidgetTester tester, String key) async {
+  await tester.scrollUntilVisible(
+    byKey(key),
+    600,
+    scrollable: find.descendant(
+      of: byKey('history.list'),
+      matching: find.byType(Scrollable),
     ),
   );
+  await tester.pump();
 }
 
 void main() {
-  testWidgets('shows an empty state with no transfers', (tester) async {
-    await tester.pumpWidget(historyOf(const []));
-    expect(byKey('history.empty'), findsOneWidget);
-    expect(byKey('history.truncated'), findsNothing);
-  });
-
-  testWidgets('labels sent and received transfers and signs their amounts', (
+  testWidgets('a new account sees "no transfers yet", not an error', (
     tester,
   ) async {
-    final harness = Harness()..signedInAsSara();
-    harness.backend
-      ..seedTransfer(
-        sender: fakeSara,
-        recipient: fakeOmar,
-        amountHalalas: 10000,
-        completedAt: DateTime.utc(2026, 11, 11, 10),
-      )
-      ..seedTransfer(
-        sender: fakeOmar,
-        recipient: fakeSara,
-        amountHalalas: 25000,
-        completedAt: DateTime.utc(2026, 11, 12, 10),
-      );
-    await tester.pumpWidget(harness.app());
-    await tester.pumpAndSettle();
+    await openHistory(tester);
+    expect(textOf(tester, 'history.empty'), en.historyEmpty);
+    expect(byKey('history.error'), findsNothing);
+  });
 
-    final sent = find.text('To Omar Saleh');
-    final received = find.text('From Omar Saleh');
-    expect(sent, findsOneWidget);
-    expect(received, findsOneWidget);
+  testWidgets('a failed load shows an error with Try again, never the empty '
+      'message (AC4.4.2)', (tester) async {
+    final harness = await openHistory(
+      tester,
+      seed: (h) {
+        seedMany(h, 2);
+        h.backend.failNext(listTransfers, FakeFault.unavailable, times: 2);
+      },
+    );
+    expect(textOf(tester, 'history.error'), en.historyError);
+    expect(byKey('history.empty'), findsNothing);
+
+    await tapKey(tester, 'history.retry');
+    expect(find.textContaining('Omar Saleh'), findsNWidgets(2));
+    expect(harness.backend.countOf(listTransfers), 3);
+  });
+
+  testWidgets('labels sent and received rows with name, email, signed amount, '
+      'reference and local time', (tester) async {
+    final sentAt = DateTime.utc(2026, 11, 11, 10);
+    await openHistory(
+      tester,
+      seed: (h) => h.backend
+        ..seedTransfer(
+          sender: fakeSara,
+          recipient: fakeOmar,
+          amountHalalas: 10000,
+          completedAt: sentAt,
+          reference: 'R-SENT00000001',
+        )
+        ..seedTransfer(
+          sender: fakeOmar,
+          recipient: fakeSara,
+          amountHalalas: 25000,
+          completedAt: DateTime.utc(2026, 11, 12, 10),
+        ),
+    );
+
+    expect(find.text(en.historySentTo('Omar Saleh')), findsOneWidget);
+    expect(find.text(en.historyReceivedFrom('Omar Saleh')), findsOneWidget);
     expect(find.text('-100.00 SAR'), findsOneWidget);
     expect(find.text('+250.00 SAR'), findsOneWidget);
-    // Newest first.
+    expect(find.text('omar@raad.test'), findsNWidgets(2));
+    final time = DateFormat('d MMM yyyy, HH:mm').format(sentAt.toLocal());
     expect(
-      tester.getTopLeft(received).dy,
-      lessThan(tester.getTopLeft(sent).dy),
+      find.text('$time · ${en.historyReference('R-SENT00000001')}'),
+      findsOneWidget,
+    );
+    // Newest first, as the service returned it.
+    expect(
+      tester.getTopLeft(find.text('+250.00 SAR')).dy,
+      lessThan(tester.getTopLeft(find.text('-100.00 SAR')).dy),
     );
   });
 
-  testWidgets('orders by time, then by transfer ID, newest first', (
+  testWidgets('rows keep the order they arrive in; the app never re-sorts', (
     tester,
   ) async {
+    final harness = Harness();
     await tester.pumpWidget(
-      historyOf([
-        itemJson(
-          id: '00000000-0000-4000-8000-00000000000a',
-          completedAt: '2026-11-01T00:00:00Z',
+      harness.screen(
+        Scaffold(
+          body: SingleChildScrollView(
+            child: HistoryList(
+              items: [
+                item(id: 'b', completedAt: '2026-11-01T00:00:00Z'),
+                item(id: 'a', completedAt: '2026-11-02T00:00:00Z'),
+              ],
+              loading: false,
+              error: null,
+            ),
+          ),
         ),
-        itemJson(
-          id: '00000000-0000-4000-8000-00000000000b',
-          completedAt: '2026-11-02T00:00:00Z',
-        ),
-        itemJson(
-          id: '00000000-0000-4000-8000-00000000000c',
-          completedAt: '2026-11-02T00:00:00Z',
-        ),
-      ]),
-    );
-    double top(String id) => tester.getTopLeft(byKey('history.item.$id')).dy;
-    expect(
-      top('00000000-0000-4000-8000-00000000000c'),
-      lessThan(top('00000000-0000-4000-8000-00000000000b')),
+      ),
     );
     expect(
-      top('00000000-0000-4000-8000-00000000000b'),
-      lessThan(top('00000000-0000-4000-8000-00000000000a')),
+      tester.getTopLeft(byKey('history.item.b')).dy,
+      lessThan(tester.getTopLeft(byKey('history.item.a')).dy),
     );
   });
 
-  testWidgets('shows completion time in the phone time zone', (tester) async {
-    final instant = DateTime.utc(2026, 11, 12, 21, 45);
-    await tester.pumpWidget(
-      historyOf([
-        itemJson(id: 'local-time', completedAt: '2026-11-12T21:45:00Z'),
-      ]),
+  testWidgets('Load more follows the cursor; the end shows no button', (
+    tester,
+  ) async {
+    final harness = await openHistory(tester, seed: (h) => seedMany(h, 25));
+    await scrollTo(tester, 'history.loadMore');
+    await tester.tap(byKey('history.loadMore'));
+    await tester.pumpAndSettle();
+    await scrollTo(tester, 'history.end');
+
+    expect(byKey('history.loadMore'), findsNothing);
+    final sent = harness.backend.requests.where(
+      (r) => r.operation == listTransfers,
     );
-    final expected = DateFormat('d MMM yyyy, HH:mm').format(instant.toLocal());
-    expect(HistoryEntry.formatTime(instant), expected);
-    expect(find.textContaining(expected), findsOneWidget);
-    expect(find.textContaining('RD-local-time'), findsOneWidget);
+    expect(sent.last.query.keys, containsAll(['cursor', 'limit']));
   });
 
-  testWidgets('reads truncation from hasMore (U1) or nextCursor (U2)', (
+  testWidgets('a failed page keeps the rows and offers Try again for it', (
     tester,
   ) async {
-    final one = [itemJson(id: '00000000-0000-4000-8000-000000000001')];
+    final harness = await openHistory(tester, seed: (h) => seedMany(h, 25));
+    harness.backend.failNext(listTransfers, FakeFault.unavailable, times: 2);
+    await scrollTo(tester, 'history.loadMore');
+    await tester.tap(byKey('history.loadMore'));
+    await tester.pumpAndSettle();
 
-    await tester.pumpWidget(historyOf(one, hasMore: true));
-    expect(byKey('history.truncated'), findsOneWidget);
-
-    await tester.pumpWidget(historyOf(one, hasMore: false));
-    expect(byKey('history.truncated'), findsNothing);
-
-    await tester.pumpWidget(historyOf(one));
-    expect(byKey('history.truncated'), findsNothing);
-
-    await tester.pumpWidget(historyOf(one, nextCursor: 'opaque'));
-    expect(byKey('history.truncated'), findsOneWidget);
+    expect(textOf(tester, 'history.loadMoreError'), en.historyLoadMoreFailed);
+    await tester.tap(byKey('history.loadMoreRetry'));
+    await tester.pumpAndSettle();
+    await scrollTo(tester, 'history.end');
+    expect(byKey('history.loadMoreError'), findsNothing);
   });
 
-  testWidgets('says the list is partial when another page exists', (
+  testWidgets('an expired cursor reloads page one with a message', (
     tester,
   ) async {
-    final harness = Harness()..signedInAsSara();
-    for (var i = 0; i < 25; i++) {
-      harness.backend.seedTransfer(
-        sender: fakeOmar,
-        recipient: fakeSara,
-        amountHalalas: 100,
-        completedAt: DateTime.utc(2026, 11, 1).add(Duration(hours: i)),
+    final harness = await openHistory(tester, seed: (h) => seedMany(h, 25));
+    harness.clock.advance(FakeMoneyBackend.cursorLifetime);
+    await scrollTo(tester, 'history.loadMore');
+    await tester.tap(byKey('history.loadMore'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      byKey('history.restarted'),
+      -600,
+      scrollable: find.descendant(
+        of: byKey('history.list'),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(textOf(tester, 'history.restarted'), en.historyRestarted);
+  });
+
+  testWidgets('the Refresh button and pull to refresh start page one again', (
+    tester,
+  ) async {
+    final harness = await openHistory(tester, seed: (h) => seedMany(h, 3));
+    await tapKey(tester, 'history.refresh');
+    await tester.fling(byKey('history.list'), const Offset(0, 400), 1000);
+    await tester.pumpAndSettle();
+    final sent = harness.backend.requests.where(
+      (r) => r.operation == listTransfers,
+    );
+    expect(sent, hasLength(3));
+    expect(sent.every((r) => !r.query.containsKey('cursor')), isTrue);
+  });
+
+  testWidgets('a 1000-entry history pages through with no duplicate request', (
+    tester,
+  ) async {
+    final harness = await openHistory(tester, seed: (h) => seedMany(h, 1000));
+    var pages = 1;
+    while (byKey('history.end').evaluate().isEmpty) {
+      await tester.scrollUntilVisible(
+        find.byWidgetPredicate(
+          (w) =>
+              w.key == const ValueKey('history.loadMore') ||
+              w.key == const ValueKey('history.end'),
+        ),
+        3000,
+        scrollable: find.descendant(
+          of: byKey('history.list'),
+          matching: find.byType(Scrollable),
+        ),
       );
+      if (byKey('history.loadMore').evaluate().isEmpty) break;
+      await tester.tap(byKey('history.loadMore'));
+      await tester.tap(byKey('history.loadMore'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      pages++;
     }
-    await tester.pumpWidget(harness.app());
-    await tester.pumpAndSettle();
-
-    await tester.scrollUntilVisible(byKey('history.truncated'), 200);
-    expect(
-      textOf(tester, 'history.truncated'),
-      'Showing your latest 20 transfers.',
-    );
-    expect(
-      harness.backend.requests.where((r) => r.path.contains('cursor')),
-      isEmpty,
-    );
-    expect(harness.backend.countOf('GET /transfers'), 1);
-  });
-
-  testWidgets('a history error does not hide the balance', (tester) async {
-    final harness = Harness()..signedInAsSara();
-    harness.backend.failNext('GET /transfers', FakeFault.unavailable);
-    await tester.pumpWidget(harness.app());
-    await tester.pumpAndSettle();
-
-    expect(byKey('history.error'), findsOneWidget);
-    expect(textOf(tester, 'wallet.balance'), '1,000.00 SAR');
+    expect(pages, 50);
+    final sent = harness.backend.requests
+        .where((r) => r.operation == listTransfers)
+        .toList();
+    expect(sent, hasLength(50));
+    expect(sent.map((r) => r.query['cursor']).toSet(), hasLength(50));
+    // The oldest transfer is the last row.
+    expect(find.text('+1.00 SAR'), findsOneWidget);
   });
 
   testWidgets('tolerates unknown fields and an unknown direction', (
     tester,
   ) async {
-    final item = itemJson(id: 'future', direction: 'reversed')
-      ..['category'] = 'gift';
-    await tester.pumpWidget(historyOf([item]));
+    await tester.pumpWidget(
+      Harness().screen(
+        Scaffold(
+          body: HistoryEntry(
+            item: item(
+              id: 'future',
+              direction: 'reversed',
+              extra: {'category': 'gift'},
+            ),
+          ),
+        ),
+      ),
+    );
     expect(find.text('Omar Saleh'), findsOneWidget);
     expect(find.text('100.00 SAR'), findsOneWidget);
+  });
+
+  group('local time of the UTC instant (AC4.1.5, NFR15.10)', () {
+    setUpAll(() => initializeDateFormatting('ar'));
+
+    final instant = DateTime.utc(2026, 11, 12, 20, 30);
+
+    test('a transfer at 23:30 in Riyadh reads 23:30 there', () {
+      expect(
+        Formats.forLocalizations(en)
+            .dateTimeAt(instant, const Duration(hours: 3)),
+        '12 Nov 2026, 23:30',
+      );
+    });
+
+    test('the same instant reads in another zone\'s own time', () {
+      expect(
+        Formats.forLocalizations(en)
+            .dateTimeAt(instant, const Duration(hours: -5)),
+        '12 Nov 2026, 15:30',
+      );
+    });
+
+    test('Arabic keeps Western digits (A8)', () {
+      final text = Formats.forLocalizations(ar)
+          .dateTimeAt(instant, const Duration(hours: 3));
+      expect(text, contains('23:30'));
+      expect(text, contains('2026'));
+      expect(RegExp('[٠-٩]').hasMatch(text), isFalse);
+    });
   });
 }

@@ -1,32 +1,43 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../api/generated/money_api_client.dart';
-import '../money/halalas.dart';
+import '../l10n/app_localizations.dart';
+import '../ui/formatting.dart';
 import '../ui/raad_theme.dart';
+import '../widgets/status_banner.dart';
 
-/// US4.1 and US4.2: the first page of completed sent and received transfers.
+/// The wallet's latest transfers (S6): loading, error with Try again, empty
+/// and loaded views kept apart (US4.4, US5.3). Rows keep the order the Money
+/// API returned them in.
 class HistoryList extends StatelessWidget {
   const HistoryList({
     super.key,
-    required this.page,
+    required this.items,
     required this.loading,
     required this.error,
+    this.onRetry,
   });
 
-  final TransferPage? page;
+  final List<TransferListItem>? items;
   final bool loading;
   final String? error;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
-    if (loading && page == null) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
+    final l10n = AppLocalizations.of(context);
+    final rows = items;
+    if (loading && rows == null) {
+      return Padding(
+        padding: const EdgeInsets.all(32),
         child: Center(
-          child: CircularProgressIndicator(
-            key: ValueKey('history.loading'),
-            color: RaadColors.cyanAccent,
+          child: Semantics(
+            label: l10n.loading,
+            liveRegion: true,
+            child: const CircularProgressIndicator(
+              key: ValueKey('history.loading'),
+              color: RaadColors.cyanAccent,
+            ),
           ),
         ),
       );
@@ -34,35 +45,21 @@ class HistoryList extends StatelessWidget {
     if (error != null) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: RaadColors.error.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: RaadColors.error.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.error_outline_rounded,
-                color: RaadColors.error,
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  error!,
-                  key: const ValueKey('history.error'),
-                  style: const TextStyle(color: RaadColors.error, fontSize: 13),
+        child: StatusBanner(
+          kind: StatusKind.error,
+          text: '${l10n.historyError} $error',
+          textKey: const ValueKey('history.error'),
+          action: onRetry == null
+              ? null
+              : TextButton(
+                  key: const ValueKey('history.retry'),
+                  onPressed: onRetry,
+                  child: Text(l10n.tryAgain),
                 ),
-              ),
-            ],
-          ),
         ),
       );
     }
-    final items = [...?page?.items]..sort(_newestFirst);
-    if (items.isEmpty) {
+    if (rows == null || rows.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: Container(
@@ -72,11 +69,14 @@ class HistoryList extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: RaadColors.cardBorder),
           ),
-          child: const Center(
+          child: Center(
             child: Text(
-              'No transfers yet.',
-              key: ValueKey('history.empty'),
-              style: TextStyle(color: RaadColors.textSecondary, fontSize: 14),
+              l10n.historyEmpty,
+              key: const ValueKey('history.empty'),
+              style: const TextStyle(
+                color: RaadColors.textSecondary,
+                fontSize: 14,
+              ),
             ),
           ),
         ),
@@ -84,109 +84,123 @@ class HistoryList extends StatelessWidget {
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final item in items) HistoryEntry(item: item),
-        // U1 shows the first page only and does not claim it is complete. The
-        // U1 service reports left-out rows with hasMore and keeps nextCursor
-        // null; a U2 service sets nextCursor.
-        if (page?.hasMore == true || page?.nextCursor != null)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'Showing your latest ${items.length} transfers.',
-              key: const ValueKey('history.truncated'),
-              style: const TextStyle(
-                color: RaadColors.textMuted,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-      ],
+      children: [for (final item in rows) HistoryEntry(item: item)],
     );
-  }
-
-  static int _newestFirst(TransferListItem a, TransferListItem b) {
-    final byTime = b.completedAt.compareTo(a.completedAt);
-    return byTime != 0 ? byTime : b.transferId.compareTo(a.transferId);
   }
 }
 
+/// One sent or received transfer (TransferListItem in the interaction
+/// spec). Direction shows as an arrow, words and a sign, never colour alone.
 class HistoryEntry extends StatelessWidget {
   const HistoryEntry({super.key, required this.item});
 
   final TransferListItem item;
 
-  /// Completion time in the phone's own time zone (AC4.1.4).
-  static String formatTime(DateTime instant) =>
-      DateFormat('d MMM yyyy, HH:mm').format(instant.toLocal());
-
   @override
   Widget build(BuildContext context) {
-    final direction = item.direction;
-    final sent = direction == TransferListItemDirection.sent;
-    final received = direction == TransferListItemDirection.received;
+    final l10n = AppLocalizations.of(context);
+    final formats = Formats.of(context);
+    final sent = item.direction == TransferListItemDirection.sent;
+    final received = item.direction == TransferListItemDirection.received;
     final name = item.otherParty.displayName;
-    final title = sent ? 'To $name' : (received ? 'From $name' : name);
-    final amount = item.amount.amountHalalas;
+    // A direction this version does not know shows the name alone.
+    final title = sent
+        ? l10n.historySentTo(name)
+        : (received ? l10n.historyReceivedFrom(name) : name);
+    final halalas = item.amount.amountHalalas;
     final amountText = sent
-        ? formatHalalas(-amount)
-        : (received
-              ? formatHalalas(amount, signed: true)
-              : formatHalalas(amount));
-
+        ? formats.money(-halalas)
+        : formats.money(halalas, signed: received);
+    final time = formats.dateTime(item.completedAt);
+    final email = formats.ltr(item.otherParty.email);
+    final reference = formats.ltr(item.reference);
     final badgeColor = received
         ? RaadColors.success
         : (sent ? RaadColors.textSecondary : RaadColors.cyanAccent);
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: RaadColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: RaadColors.cardBorder),
+    final amount = Text(
+      amountText,
+      key: ValueKey('history.amount.${item.transferId}'),
+      style: TextStyle(
+        color: received ? RaadColors.success : RaadColors.textPrimary,
+        fontWeight: FontWeight.w700,
+        fontSize: 15,
       ),
-      child: ListTile(
-        key: ValueKey('history.item.${item.transferId}'),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: badgeColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
-          ),
-          child: Icon(
-            sent ? Icons.north_east : Icons.south_west,
-            color: badgeColor,
-            size: 20,
-          ),
+    );
+    // With large text the amount gets its own line instead of squeezing
+    // the name; it stays one unit either way.
+    final largeText = MediaQuery.textScalerOf(context).scale(15) > 20;
+
+    return Semantics(
+      key: ValueKey('history.item.${item.transferId}'),
+      container: true,
+      label: l10n.historyEntrySemantics(
+        title,
+        email,
+        amountText,
+        time,
+        reference,
+      ),
+      excludeSemantics: true,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: RaadColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: RaadColors.cardBorder),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: RaadColors.textPrimary,
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-          ),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            '${formatTime(item.completedAt)} · ${item.reference}',
-            style: const TextStyle(color: RaadColors.textMuted, fontSize: 12),
-          ),
-        ),
-        trailing: Text(
-          amountText,
-          key: ValueKey('history.amount.${item.transferId}'),
-          style: TextStyle(
-            color: received ? RaadColors.success : RaadColors.textPrimary,
-            fontWeight: FontWeight.w700,
-            fontSize: 15,
-          ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: badgeColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+              ),
+              child: Icon(
+                sent ? Icons.north_east : Icons.south_west,
+                color: badgeColor,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: RaadColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    email,
+                    style: const TextStyle(
+                      color: RaadColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$time · ${l10n.historyReference(reference)}',
+                    style: const TextStyle(
+                      color: RaadColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                  if (largeText) ...[const SizedBox(height: 4), amount],
+                ],
+              ),
+            ),
+            if (!largeText) ...[const SizedBox(width: 8), amount],
+          ],
         ),
       ),
     );

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../ui/raad_theme.dart';
 
 /// A swipeable virtual card widget with 3 color variants:
 /// Silver, Gold, and White — matching RAAD brand identity.
+///
+/// It is part of the design only (the person's decision of 17 November):
+/// there is no card, nothing here collects card or bank details, and screen
+/// readers hear that it is not available yet.
 class VirtualCardCarousel extends StatefulWidget {
   const VirtualCardCarousel({super.key});
 
@@ -32,52 +37,72 @@ class _VirtualCardCarouselState extends State<VirtualCardCarousel> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Section header
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
             children: [
-              const Text(
-                'My Cards',
-                style: TextStyle(
-                  color: RaadColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 17,
-                  letterSpacing: -0.2,
+              Semantics(
+                header: true,
+                child: Text(
+                  l10n.cardsTitle,
+                  style: const TextStyle(
+                    color: RaadColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
-              GestureDetector(
-                onTap: _showApplePaySnackbar,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: RaadColors.cyanAccent,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: RaadColors.cardBorder,
+              // Part of the design only: it says it is not available yet.
+              Semantics(
+                button: true,
+                label: '${l10n.cardsAddToAppleWallet}. ${l10n.notAvailableYet}',
+                excludeSemantics: true,
+                child: InkWell(
+                  key: const ValueKey('cards.appleWallet'),
+                  onTap: _showNotAvailable,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 44),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.apple, color: Colors.white, size: 15),
-                      SizedBox(width: 4),
-                      Text(
-                        'Add to Apple Wallet',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                    decoration: BoxDecoration(
+                      color: RaadColors.cyanAccent,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: RaadColors.cardBorder),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.apple,
+                          color: RaadColors.background,
+                          size: 15,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            l10n.cardsAddToAppleWallet,
+                            style: const TextStyle(
+                              color: RaadColors.background,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -85,6 +110,19 @@ class _VirtualCardCarouselState extends State<VirtualCardCarousel> {
           ),
         ),
 
+        // The decorative card and its dots read as one item.
+        Semantics(
+          label: '${l10n.cardsPreview}. ${l10n.notAvailableYet}',
+          excludeSemantics: true,
+          child: _carousel(),
+        ),
+      ],
+    );
+  }
+
+  Widget _carousel() {
+    return Column(
+      children: [
         // Card with swipe gesture detection
         GestureDetector(
           onHorizontalDragEnd: (details) {
@@ -119,9 +157,7 @@ class _VirtualCardCarouselState extends State<VirtualCardCarousel> {
                 width: isActive ? 24 : 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: isActive
-                      ? dotColor
-                      : dotColor.withValues(alpha: 0.3),
+                  color: isActive ? dotColor : dotColor.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -143,11 +179,11 @@ class _VirtualCardCarouselState extends State<VirtualCardCarousel> {
     }
   }
 
-  void _showApplePaySnackbar() {
+  void _showNotAvailable() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        // Apple Pay provisioning requires issuer agreement with Apple — coming soon
-        content: const Text('Apple Pay provisioning coming soon'),
+        // No card exists and no card or bank detail is ever collected.
+        content: Text(AppLocalizations.of(context).cardsAppleWalletSoon),
         backgroundColor: RaadColors.surface,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -209,120 +245,124 @@ class _VirtualCard extends StatelessWidget {
               ),
             ),
 
-            // Card content
-            Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top row: RAAD brand + chip icon
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // RAAD branding
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.bolt_rounded,
-                            color: _textColor,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'RAAD',
-                            style: TextStyle(
+            // Card content: fixed-size artwork, hidden from screen readers,
+            // so its text keeps its size inside the card's fixed shape.
+            MediaQuery.withNoTextScaling(
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top row: RAAD brand + chip icon
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // RAAD branding
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.bolt_rounded,
                               color: _textColor,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 15,
-                              letterSpacing: 2,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'RAAD',
+                              style: TextStyle(
+                                color: _textColor,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ],
+                        ),
+                        // EMV chip icon (decorative)
+                        Container(
+                          width: 32,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: _chipColors,
+                            ),
+                            border: Border.all(
+                              color: _textColor.withValues(alpha: 0.2),
+                              width: 0.5,
                             ),
                           ),
-                        ],
-                      ),
-                      // EMV chip icon (decorative)
-                      Container(
-                        width: 32,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(4),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: _chipColors,
-                          ),
-                          border: Border.all(
-                            color: _textColor.withValues(alpha: 0.2),
-                            width: 0.5,
-                          ),
-                        ),
-                        child: Center(
-                          child: Icon(
-                            Icons.memory_rounded,
-                            color: _textColor.withValues(alpha: 0.6),
-                            size: 14,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const Spacer(),
-
-                  // Masked card number
-                  Text(
-                    '•••• •••• •••• 1635',
-                    style: TextStyle(
-                      color: _textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 2.5,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Bottom row: label + network
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'VIRTUAL CARD',
-                            style: TextStyle(
+                          child: Center(
+                            child: Icon(
+                              Icons.memory_rounded,
                               color: _textColor.withValues(alpha: 0.6),
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1.5,
+                              size: 14,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _variantLabel,
-                            style: TextStyle(
-                              color: _textColor.withValues(alpha: 0.85),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                      // Network wordmark
-                      Text(
-                        'VISA',
-                        style: TextStyle(
-                          color: _textColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          fontStyle: FontStyle.italic,
-                          letterSpacing: 1,
                         ),
+                      ],
+                    ),
+
+                    const Spacer(),
+
+                    // Masked card number
+                    Text(
+                      '•••• •••• •••• 1635',
+                      style: TextStyle(
+                        color: _textColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 2.5,
+                        fontFamily: 'monospace',
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Bottom row: label + network
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              AppLocalizations.of(context).cardsVirtualCard
+                                  .toUpperCase(),
+                              style: TextStyle(
+                                color: _textColor.withValues(alpha: 0.6),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _variantLabel(AppLocalizations.of(context)),
+                              style: TextStyle(
+                                color: _textColor.withValues(alpha: 0.85),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        // Network wordmark
+                        Text(
+                          'VISA',
+                          style: TextStyle(
+                            color: _textColor,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            fontStyle: FontStyle.italic,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -428,14 +468,9 @@ class _VirtualCard extends StatelessWidget {
     }
   }
 
-  String get _variantLabel {
-    switch (variant) {
-      case _CardVariant.silver:
-        return 'Silver';
-      case _CardVariant.gold:
-        return 'Gold';
-      case _CardVariant.white:
-        return 'Platinum';
-    }
-  }
+  String _variantLabel(AppLocalizations l10n) => switch (variant) {
+    _CardVariant.silver => l10n.cardsSilver,
+    _CardVariant.gold => l10n.cardsGold,
+    _CardVariant.white => l10n.cardsPlatinum,
+  };
 }

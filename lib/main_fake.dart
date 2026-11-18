@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'api/money_service.dart';
 import 'app/app_services.dart';
+import 'app/connectivity.dart';
+import 'app/protected_store.dart';
 import 'app/raad_app.dart';
+import 'dev/fake_accounts.dart';
 import 'dev/fake_auth_service.dart';
 import 'dev/fake_money_backend.dart';
 
@@ -13,15 +15,20 @@ import 'dev/fake_money_backend.dart';
 /// Sign in as sara@raad.test with Local-preview-1 and send to omar@raad.test.
 /// This entry point is never used for a store or tester build.
 void main() {
-  final auth = FakeAuthService();
-  final money = MoneyService.create(
-    baseUrl: FakeMoneyBackend.baseUrl,
-    auth: auth,
-    adapter: FakeMoneyBackend.preview(),
-  );
+  final directory = FakeDirectory();
   runApp(
     RaadApp(
-      services: AppServices(auth: auth, money: money, environmentChip: 'LOCAL'),
+      services: AppServices.create(
+        auth: FakeAuthService(directory: directory),
+        moneyBaseUrl: FakeMoneyBackend.baseUrl,
+        moneyAdapter: FakeMoneyBackend.preview(directory: directory),
+        environmentName: 'local',
+        environmentChip: 'LOCAL',
+        store: MemoryProtectedStore(),
+        // The fake answers without a network, so the preview stays online.
+        connectivity: ManualConnectivitySignal(),
+        demoShortcuts: true,
+      ),
     ),
   );
 }

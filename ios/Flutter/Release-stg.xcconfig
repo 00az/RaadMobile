@@ -1,0 +1,6 @@
+// The stg flavour, Release: flutter build ipa --flavor stg ...
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release-stg.xcconfig"
+#include "Generated.xcconfig"
+RAAD_FLAVOR = stg
+RAAD_BUNDLE_SUFFIX = .stg
+RAAD_DISPLAY_NAME = RAAD STG

@@ -23,6 +23,11 @@ jobs:
           flutter-version: 3.47.2
           channel: stable
           cache: true
+      # The Android build below needs Java 17 for the Android Gradle Plugin.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - run: flutter pub get --enforce-lockfile
       - name: Formatting
         run: dart format --output=none --set-exit-if-changed lib test integration_test tool
@@ -30,12 +35,20 @@ jobs:
         run: flutter analyze
       - name: Generated C1 client matches the pinned contract
         run: dart run swagger_parser --check
+      - name: Arabic and English catalogs hold the same messages
+        run: dart run tool/check_l10n.dart
+      - name: Generated localizations match the catalogs
+        run: |
+          flutter gen-l10n
+          git diff --exit-code -- lib/l10n
       - name: Unit, widget and contract tests with coverage
         run: flutter test --coverage
       - name: Line coverage floor (80%)
         run: dart run tool/check_coverage.dart coverage/lcov.info 80
       - name: Example C4 file passes the build-time check
         run: dart run tool/check_env_config.dart config/c4-dev.example.json dev
+      - name: Android debug build of the dev flavour (example C4)
+        run: flutter build apk --debug --flavor dev --dart-define-from-file=config/c4-dev.example.json
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

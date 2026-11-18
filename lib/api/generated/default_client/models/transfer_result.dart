@@ -6,6 +6,8 @@ import 'recipient.dart';
 class TransferResult {
   const TransferResult({
     required this.transferId,
+
+    /// User-facing reference, separate from transferId. Transfers completed by this release use R- followed by 12 characters from 23456789ABCDEFGHJKMNPQRSTUVWXYZ; history may also show references issued by the U1 pre-release. Clients display it and never parse it.
     required this.reference,
     required this.recipient,
     required this.amount,
@@ -31,6 +33,7 @@ class TransferResult {
 
   final String transferId;
 
+  /// User-facing reference, separate from transferId. Transfers completed by this release use R- followed by 12 characters from 23456789ABCDEFGHJKMNPQRSTUVWXYZ; history may also show references issued by the U1 pre-release. Clients display it and never parse it.
   final String reference;
 
   final Recipient recipient;

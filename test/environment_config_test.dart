@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:raad_mobile/config/build_environment.dart';
 import 'package:raad_mobile/config/environment_config.dart';
 
 Map<String, Object?> devConfig([Map<String, Object?> changes = const {}]) => {
@@ -157,6 +158,6 @@ void main() {
   });
 
   test('a build without the C4 values refuses to start', () {
-    expect(EnvironmentConfig.fromDartDefines, refusedWith('Missing value'));
+    expect(configFromBuild, refusedWith('Missing value'));
   });
 }

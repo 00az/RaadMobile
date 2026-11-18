@@ -1,0 +1,6 @@
+// The dev flavour, Debug: flutter build ios --debug --flavor dev ...
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug-dev.xcconfig"
+#include "Generated.xcconfig"
+RAAD_FLAVOR = dev
+RAAD_BUNDLE_SUFFIX = .dev
+RAAD_DISPLAY_NAME = RAAD DEV

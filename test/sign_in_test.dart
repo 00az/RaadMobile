@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:raad_mobile/auth/auth_service.dart';
 import 'package:raad_mobile/auth/cognito_auth_service.dart';
 import 'package:raad_mobile/dev/fake_accounts.dart';
-import 'package:raad_mobile/ui/messages.dart';
 
 import 'support/harness.dart';
 
@@ -69,7 +68,7 @@ void main() {
       await tapKey(tester, 'signIn.submit');
       final unknownEmail = textOf(tester, 'signIn.error');
 
-      expect(wrongPassword, Messages.signInFailed);
+      expect(wrongPassword, en.signInRefused);
       expect(unknownEmail, wrongPassword);
       expect(harness.backend.requests, isEmpty);
     });
@@ -86,8 +85,8 @@ void main() {
       await enter(tester, 'signIn.password', fakeSara.password);
       await tapKey(tester, 'signIn.submit');
 
-      expect(textOf(tester, 'signIn.error'), Messages.signInRateLimited);
-      expect(Messages.signInRateLimited, isNot(Messages.signInFailed));
+      expect(textOf(tester, 'signIn.error'), en.tooManyAttempts);
+      expect(en.tooManyAttempts, isNot(en.signInRefused));
     });
 
     testWidgets('clears the error when either field changes', (tester) async {

@@ -215,6 +215,174 @@ void main() {
     expect(await store.read(), isNull);
   });
 
+  test('reads the account from the stored access token', () async {
+    expect(await auth.currentAccountId(), isNull);
+    await store.save(
+      StoredSession(
+        accessToken: accessToken(expires: now.add(const Duration(hours: 1))),
+        refreshToken: 'r1',
+      ),
+    );
+    expect(await auth.currentAccountId(), 'sara-sub');
+  });
+
+  test('concurrent requests with an expired token share one refresh', () async {
+    final fresh = accessToken(expires: now.add(const Duration(minutes: 60)));
+    await store.save(
+      StoredSession(
+        accessToken: accessToken(
+          expires: now.subtract(const Duration(minutes: 1)),
+        ),
+        refreshToken: 'r1',
+      ),
+    );
+    cognito.answer = (_) => {
+      'AuthenticationResult': {
+        'AccessToken': fresh,
+        'IdToken': jwt({'sub': 'sara-sub', 'exp': 0}),
+      },
+    };
+    final tokens = await Future.wait([
+      auth.accessToken(),
+      auth.accessToken(),
+      auth.accessToken(),
+    ]);
+    expect(tokens, [fresh, fresh, fresh]);
+    expect(cognito.operations, ['InitiateAuth']);
+  });
+
+  group('account actions (C3)', () {
+    test(
+      'sign-up sends the normalized email, the name and nothing else',
+      () async {
+        cognito.answer = (_) => {'UserConfirmed': false, 'UserSub': 'new-sub'};
+        await auth.signUp(
+          email: ' Amal@Example.TEST ',
+          displayName: ' Amal ',
+          password: 'Abcdef12',
+        );
+        expect(cognito.operations, ['SignUp']);
+        final params = cognito.params.single;
+        expect(params['Username'], 'amal@example.test');
+        final attributes = {
+          for (final a in params['UserAttributes'] as List<AttributeArg>)
+            a.name: a.value,
+        };
+        expect(attributes, {'email': 'amal@example.test', 'name': 'Amal'});
+      },
+    );
+
+    test('sign-up refusals map to the C3 codes', () async {
+      for (final (cognitoCode, expected) in [
+        ('UsernameExistsException', AuthFailureCode.emailInUse),
+        ('InvalidPasswordException', AuthFailureCode.passwordRuleFailed),
+        ('TooManyRequestsException', AuthFailureCode.rateLimited),
+        ('NetworkError', AuthFailureCode.network),
+        ('CodeDeliveryFailureException', AuthFailureCode.failed),
+      ]) {
+        cognito.answer = (_) => CognitoClientException('x', code: cognitoCode);
+        await expectLater(
+          auth.signUp(email: 'a@x.test', displayName: 'A', password: 'p'),
+          throwsA(isA<AuthFailure>().having((f) => f.code, 'code', expected)),
+          reason: cognitoCode,
+        );
+      }
+    });
+
+    test('confirmation and reset codes map to the C3 codes', () {
+      for (final code in [
+        'CodeMismatchException',
+        'ExpiredCodeException',
+        'UserNotFoundException',
+        'NotAuthorizedException',
+      ]) {
+        expect(
+          mapCognitoCodeError(code),
+          AuthFailureCode.codeInvalidOrExpired,
+          reason: code,
+        );
+      }
+      expect(
+        mapCognitoCodeError('InvalidPasswordException'),
+        AuthFailureCode.passwordRuleFailed,
+      );
+      expect(
+        mapCognitoCodeError('LimitExceededException'),
+        AuthFailureCode.rateLimited,
+      );
+      expect(mapCognitoCodeError('NetworkError'), AuthFailureCode.network);
+      expect(mapCognitoCodeError('Surprise'), AuthFailureCode.failed);
+    });
+
+    test('confirmation sends the code without spaces', () async {
+      cognito.answer = (_) => <String, Object?>{};
+      await auth.confirmSignUp(email: ' Amal@Example.test ', code: '12 34 56');
+      expect(cognito.operations, ['ConfirmSignUp']);
+      expect(cognito.params.single['Username'], 'amal@example.test');
+      expect(cognito.params.single['ConfirmationCode'], '123456');
+
+      cognito.answer = (_) =>
+          CognitoClientException('x', code: 'CodeMismatchException');
+      await expectLater(
+        auth.confirmSignUp(email: 'amal@example.test', code: '1'),
+        throwsA(
+          isA<AuthFailure>().having(
+            (f) => f.code,
+            'code',
+            AuthFailureCode.codeInvalidOrExpired,
+          ),
+        ),
+      );
+    });
+
+    test('resend and reset requests acknowledge every answer but a limit '
+        'or the network', () async {
+      for (final cognitoCode in [
+        'UserNotFoundException',
+        'InvalidParameterException',
+        'NotAuthorizedException',
+      ]) {
+        cognito.answer = (_) => CognitoClientException('x', code: cognitoCode);
+        await auth.resendConfirmationCode(email: 'nobody@x.test');
+        await auth.requestPasswordReset(email: 'nobody@x.test');
+      }
+      cognito.answer = (_) =>
+          CognitoClientException('x', code: 'LimitExceededException');
+      await expectLater(
+        auth.resendConfirmationCode(email: 'a@x.test'),
+        throwsA(isA<AuthFailure>()),
+      );
+      cognito.answer = (_) => CognitoClientException('x', code: 'NetworkError');
+      await expectLater(
+        auth.requestPasswordReset(email: 'a@x.test'),
+        throwsA(
+          isA<AuthFailure>().having(
+            (f) => f.code,
+            'code',
+            AuthFailureCode.network,
+          ),
+        ),
+      );
+      expect(cognito.operations.toSet(), {
+        'ResendConfirmationCode',
+        'ForgotPassword',
+      });
+    });
+
+    test('a password reset sends the code and the new password', () async {
+      cognito.answer = (_) => <String, Object?>{};
+      await auth.confirmPasswordReset(
+        email: 'SARA@raad.test',
+        code: ' 654321 ',
+        newPassword: 'Newpass12',
+      );
+      expect(cognito.operations, ['ConfirmForgotPassword']);
+      expect(cognito.params.single['Username'], 'sara@raad.test');
+      expect(cognito.params.single['ConfirmationCode'], '654321');
+      expect(cognito.params.single['Password'], 'Newpass12');
+    });
+  });
+
   test('sign-out removes the tokens and revokes the refresh token', () async {
     await store.save(
       StoredSession(

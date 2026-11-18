@@ -1,0 +1,6 @@
+// The prd flavour, Debug: flutter build ios --debug --flavor prd ...
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug-prd.xcconfig"
+#include "Generated.xcconfig"
+RAAD_FLAVOR = prd
+RAAD_BUNDLE_SUFFIX =
+RAAD_DISPLAY_NAME = RAAD
