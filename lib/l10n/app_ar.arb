@@ -171,9 +171,8 @@
   "languageEnglish": "English",
 
   "cardsTitle": "بطاقاتي",
-  "cardsAddToAppleWallet": "إضافة إلى Apple Wallet",
-  "cardsAppleWalletSoon": "البطاقات غير متاحة بعد.",
   "cardsPreview": "تصميم بطاقة افتراضية",
+  "cardsDemo": "بطاقة تجريبية",
   "cardsVirtualCard": "بطاقة افتراضية",
   "cardsSilver": "فضية",
   "cardsGold": "ذهبية",

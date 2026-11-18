@@ -244,39 +244,47 @@ void main() {
   });
 
   group('decorative parts', () {
-    testWidgets('the card, Apple Wallet and the two other services are '
-        'announced as not available', (tester) async {
-      final handle = tester.ensureSemantics();
-      await openApp(tester);
-      expect(
-        find.bySemanticsLabel('${en.cardsPreview}. ${en.notAvailableYet}'),
-        findsOneWidget,
-      );
-      expect(
-        find.bySemanticsLabel(
-          '${en.cardsAddToAppleWallet}. ${en.notAvailableYet}',
-        ),
-        findsOneWidget,
-      );
-      for (final service in [
-        en.walletServiceInternational,
-        en.walletServiceBank,
-      ]) {
+    for (final (language, l10n) in [
+      (AppLanguage.en, en),
+      (AppLanguage.ar, ar),
+    ]) {
+      testWidgets('the demo card and the two other services are announced as '
+          'not available, with no card network or wallet mark, in '
+          '${language.name} (R-03)', (tester) async {
+        final handle = tester.ensureSemantics();
+        await openApp(tester, language: language);
         expect(
-          find.bySemanticsLabel('$service. ${en.notAvailableYet}'),
+          find.bySemanticsLabel(
+            '${l10n.cardsPreview}. ${l10n.cardsDemo}. ${l10n.notAvailableYet}',
+          ),
           findsOneWidget,
         );
-      }
-      final international = tester.getSemantics(
-        byKey('wallet.service.international'),
-      );
-      expect(
-        international.getSemanticsData().hasAction(SemanticsAction.tap),
-        isFalse,
-        reason: 'it does nothing, so it offers no action',
-      );
-      handle.dispose();
-    });
+        expect(
+          find.bySemanticsLabel(
+            RegExp('visa|mastercard|apple', caseSensitive: false),
+          ),
+          findsNothing,
+        );
+        for (final service in [
+          l10n.walletServiceInternational,
+          l10n.walletServiceBank,
+        ]) {
+          expect(
+            find.bySemanticsLabel('$service. ${l10n.notAvailableYet}'),
+            findsOneWidget,
+          );
+        }
+        final international = tester.getSemantics(
+          byKey('wallet.service.international'),
+        );
+        expect(
+          international.getSemanticsData().hasAction(SemanticsAction.tap),
+          isFalse,
+          reason: 'it does nothing, so it offers no action',
+        );
+        handle.dispose();
+      });
+    }
 
     testWidgets('the logo is read as RAAD', (tester) async {
       final handle = tester.ensureSemantics();

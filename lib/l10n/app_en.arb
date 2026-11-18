@@ -219,9 +219,8 @@
   "languageEnglish": "English",
 
   "cardsTitle": "My cards",
-  "cardsAddToAppleWallet": "Add to Apple Wallet",
-  "cardsAppleWalletSoon": "Cards are not available yet.",
   "cardsPreview": "Virtual card design",
+  "cardsDemo": "Demo card",
   "cardsVirtualCard": "Virtual card",
   "cardsSilver": "Silver",
   "cardsGold": "Gold",

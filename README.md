@@ -10,7 +10,7 @@ What the app does (U1 walking skeleton, then U3):
 - work offline safely: sending is off, nothing is queued;
 - Arabic (right to left) and English, chosen in the app.
 
-No real payment system is connected and no card or bank detail is ever asked for. The card carousel and the international and bank-transfer tiles on the wallet are part of the design only and say they are not available yet.
+No real payment system is connected and no card or bank detail is ever asked for. The card carousel and the international and bank-transfer tiles on the wallet are part of the design only and say they are not available yet. The card is labelled "Demo card" and carries no card network or wallet brand.
 
 ## Prerequisites
 
@@ -29,16 +29,17 @@ flutter pub get --enforce-lockfile
 flutter test --coverage && dart run tool/check_coverage.dart coverage/lcov.info 80
 ```
 
-CI runs these checks on every pull request and every push to `main` (`.github/workflows/ci.yml`):
+Run these checks locally before you open a pull request. CI runs the same checks on every pull request and every push to `main` (`.github/workflows/ci.yml`):
 
 | Check | What it does |
 |---|---|
 | `dart format --set-exit-if-changed` | Fails on unformatted code. |
 | `flutter analyze` | Runs the `flutter_lints` rules. Any issue fails. |
+| `dart run tool/check_no_logging.dart` | Fails if the app's own code (everything in `lib/` except the generated client and localizations) uses `print`, `debugPrint` or its relatives, `stdout`, `stderr` or `log` from `dart:developer`. |
 | `dart run swagger_parser --check` | Fails if the generated client differs from the pinned contract. |
 | `dart run tool/check_l10n.dart` | Fails if a message is missing or empty in Arabic or English, or their placeholders differ. |
 | `flutter gen-l10n` then `git diff` | Fails if the committed localizations are out of date. |
-| `flutter test --coverage` | Runs the unit, widget, contract and accessibility tests. |
+| `flutter test --coverage` | Runs the unit, widget, contract, accessibility and log-privacy tests. |
 | Coverage floor | At least 80% line coverage of the app's own code. The generated C1 client is not counted. |
 | C4 config check | Validates the example environment file. |
 | Android dev build | Builds the `dev` flavour with the example C4 file. |
@@ -109,7 +110,7 @@ Other rules the app follows:
 - **Offline.** Without a connection Send, Confirm and Try again are off with a stated reason; they turn on again when it returns. Nothing is queued.
 - **Money** is integer halalas everywhere. The app parses SAR text digit by digit (Arabic-Indic digits are read as Western ones) and formats with integer arithmetic, never floating point. Amounts show Western digits, `SAR` in English and `ر.س` in Arabic.
 - **Sessions.** Concurrent requests share one token renewal. More than 30 days without use, or a clock that went backwards, asks for sign-in. Sign-out removes the tokens, the kept balance and the open transfer, and answers to requests from the old session are dropped.
-- **Tokens and logging.** The access token goes only in `Authorization: Bearer`. Tokens and private records live only in the phone's secure storage. The app logs no requests, responses, tokens, codes, emails, amounts or keys.
+- **Tokens and logging.** The access token goes only in `Authorization: Bearer`. Tokens and private records live only in the phone's secure storage. The app logs no requests, responses, tokens, codes, emails, amounts or keys. `test/log_privacy_test.dart` runs the account and money journeys with `print`, `debugPrint`, `stdout` and `stderr` captured, and fails if any password, code, token, account id, email, name, amount, request key or history cursor appears. `tool/check_no_logging.dart` fails on any of those calls, and on `log` from `dart:developer` (which a test cannot capture), in the app's own code.
 
 ## Integration tests
 
@@ -147,7 +148,7 @@ lib/
   ui/             theme, text for outcomes, formatting of amounts and times
   dev/            contract fakes of the Money API and sign-in
 contracts/        pins.yaml and pinned contract copies
-tool/             coverage floor, C4 check, catalog check, contract pinning
+tool/             coverage floor, C4 check, catalog check, no-logging check, contract pinning
 test/             unit, widget, contract and accessibility tests
 integration_test/ walking skeleton and U3 journeys
 docs/             acceptance journey

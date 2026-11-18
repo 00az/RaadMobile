@@ -1052,23 +1052,17 @@ abstract class AppLocalizations {
   /// **'My cards'**
   String get cardsTitle;
 
-  /// No description provided for @cardsAddToAppleWallet.
-  ///
-  /// In en, this message translates to:
-  /// **'Add to Apple Wallet'**
-  String get cardsAddToAppleWallet;
-
-  /// No description provided for @cardsAppleWalletSoon.
-  ///
-  /// In en, this message translates to:
-  /// **'Cards are not available yet.'**
-  String get cardsAppleWalletSoon;
-
   /// No description provided for @cardsPreview.
   ///
   /// In en, this message translates to:
   /// **'Virtual card design'**
   String get cardsPreview;
+
+  /// No description provided for @cardsDemo.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo card'**
+  String get cardsDemo;
 
   /// No description provided for @cardsVirtualCard.
   ///

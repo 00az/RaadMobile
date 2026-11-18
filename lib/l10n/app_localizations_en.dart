@@ -543,13 +543,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cardsTitle => 'My cards';
 
   @override
-  String get cardsAddToAppleWallet => 'Add to Apple Wallet';
-
-  @override
-  String get cardsAppleWalletSoon => 'Cards are not available yet.';
-
-  @override
   String get cardsPreview => 'Virtual card design';
+
+  @override
+  String get cardsDemo => 'Demo card';
 
   @override
   String get cardsVirtualCard => 'Virtual card';

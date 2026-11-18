@@ -537,13 +537,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cardsTitle => 'بطاقاتي';
 
   @override
-  String get cardsAddToAppleWallet => 'إضافة إلى Apple Wallet';
-
-  @override
-  String get cardsAppleWalletSoon => 'البطاقات غير متاحة بعد.';
-
-  @override
   String get cardsPreview => 'تصميم بطاقة افتراضية';
+
+  @override
+  String get cardsDemo => 'بطاقة تجريبية';
 
   @override
   String get cardsVirtualCard => 'بطاقة افتراضية';

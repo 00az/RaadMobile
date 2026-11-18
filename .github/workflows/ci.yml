@@ -33,6 +33,8 @@ jobs:
         run: dart format --output=none --set-exit-if-changed lib test integration_test tool
       - name: Analysis (flutter_lints; any issue fails)
         run: flutter analyze
+      - name: No logging calls in the app's own code (NFR10.10)
+        run: dart run tool/check_no_logging.dart
       - name: Generated C1 client matches the pinned contract
         run: dart run swagger_parser --check
       - name: Arabic and English catalogs hold the same messages

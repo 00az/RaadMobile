@@ -8,7 +8,9 @@ import '../ui/raad_theme.dart';
 ///
 /// It is part of the design only (the person's decision of 17 November):
 /// there is no card, nothing here collects card or bank details, and screen
-/// readers hear that it is not available yet.
+/// readers hear that it is a demo and not available yet. It carries no card
+/// network or wallet mark (review-01 R-03): only the RAAD wordmark, a masked
+/// number and a "Demo card" label.
 class VirtualCardCarousel extends StatefulWidget {
   const VirtualCardCarousel({super.key});
 
@@ -44,75 +46,25 @@ class _VirtualCardCarouselState extends State<VirtualCardCarousel> {
         // Section header
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-          child: Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              Semantics(
-                header: true,
-                child: Text(
-                  l10n.cardsTitle,
-                  style: const TextStyle(
-                    color: RaadColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 17,
-                    letterSpacing: -0.2,
-                  ),
-                ),
+          child: Semantics(
+            header: true,
+            child: Text(
+              l10n.cardsTitle,
+              style: const TextStyle(
+                color: RaadColors.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 17,
+                letterSpacing: -0.2,
               ),
-              // Part of the design only: it says it is not available yet.
-              Semantics(
-                button: true,
-                label: '${l10n.cardsAddToAppleWallet}. ${l10n.notAvailableYet}',
-                excludeSemantics: true,
-                child: InkWell(
-                  key: const ValueKey('cards.appleWallet'),
-                  onTap: _showNotAvailable,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    constraints: const BoxConstraints(minHeight: 44),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: RaadColors.cyanAccent,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: RaadColors.cardBorder),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.apple,
-                          color: RaadColors.background,
-                          size: 15,
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            l10n.cardsAddToAppleWallet,
-                            style: const TextStyle(
-                              color: RaadColors.background,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
 
         // The decorative card and its dots read as one item.
         Semantics(
-          label: '${l10n.cardsPreview}. ${l10n.notAvailableYet}',
+          label:
+              '${l10n.cardsPreview}. ${l10n.cardsDemo}. '
+              '${l10n.notAvailableYet}',
           excludeSemantics: true,
           child: _carousel(),
         ),
@@ -178,19 +130,6 @@ class _VirtualCardCarouselState extends State<VirtualCardCarousel> {
         return Colors.white;
     }
   }
-
-  void _showNotAvailable() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        // No card exists and no card or bank detail is ever collected.
-        content: Text(AppLocalizations.of(context).cardsAppleWalletSoon),
-        backgroundColor: RaadColors.surface,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
-  }
 }
 
 enum _CardVariant { silver, gold, white }
@@ -201,6 +140,7 @@ class _VirtualCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -319,7 +259,8 @@ class _VirtualCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
 
-                    // Bottom row: label + network
+                    // Bottom row: card label and variant, then the demo
+                    // label. No card network or wallet mark (R-03).
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -327,8 +268,7 @@ class _VirtualCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              AppLocalizations.of(context).cardsVirtualCard
-                                  .toUpperCase(),
+                              l10n.cardsVirtualCard.toUpperCase(),
                               style: TextStyle(
                                 color: _textColor.withValues(alpha: 0.6),
                                 fontSize: 9,
@@ -338,7 +278,7 @@ class _VirtualCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              _variantLabel(AppLocalizations.of(context)),
+                              _variantLabel(l10n),
                               style: TextStyle(
                                 color: _textColor.withValues(alpha: 0.85),
                                 fontSize: 11,
@@ -348,17 +288,8 @@ class _VirtualCard extends StatelessWidget {
                             ),
                           ],
                         ),
-                        // Network wordmark
-                        Text(
-                          'VISA',
-                          style: TextStyle(
-                            color: _textColor,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            fontStyle: FontStyle.italic,
-                            letterSpacing: 1,
-                          ),
-                        ),
+                        const SizedBox(width: 12),
+                        Flexible(child: _demoLabel(l10n)),
                       ],
                     ),
                   ],
@@ -467,6 +398,27 @@ class _VirtualCard extends StatelessWidget {
         return const Color(0xFF1A1A2E);
     }
   }
+
+  /// Says on the card's face that it is a demo. No letter spacing, so
+  /// Arabic letters stay joined.
+  Widget _demoLabel(AppLocalizations l10n) => Container(
+    key: const ValueKey('cards.demoLabel'),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(color: _textColor.withValues(alpha: 0.55)),
+    ),
+    child: Text(
+      l10n.cardsDemo,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: _textColor,
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+  );
 
   String _variantLabel(AppLocalizations l10n) => switch (variant) {
     _CardVariant.silver => l10n.cardsSilver,

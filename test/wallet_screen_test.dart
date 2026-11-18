@@ -1,8 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
+import 'package:raad_mobile/app/language.dart';
 import 'package:raad_mobile/dev/fake_accounts.dart';
 import 'package:raad_mobile/dev/fake_money_backend.dart';
 import 'package:raad_mobile/money/balance_snapshot.dart';
+import 'package:raad_mobile/widgets/virtual_card.dart';
 
 import 'support/harness.dart';
 
@@ -175,5 +178,96 @@ void main() {
     expect(byKey('signIn.submit'), findsOneWidget);
     expect(byKey('signIn.notice'), findsNothing);
     expect(await harness.auth.hasSession(), isFalse);
+  });
+
+  group('the decorative card (review-01 R-03)', () {
+    for (final (language, l10n) in [
+      (AppLanguage.en, en),
+      (AppLanguage.ar, ar),
+    ]) {
+      testWidgets('every variant is a RAAD demo card with no card network or '
+          'wallet mark in ${language.name}', (tester) async {
+        final harness = Harness()..signedInAsSara();
+        await harness.language.choose(language);
+        await openWallet(tester, harness);
+        final carousel = find.byType(VirtualCardCarousel);
+        Finder onCard(Finder finder) =>
+            find.descendant(of: carousel, matching: finder);
+        await tester.ensureVisible(carousel);
+        await tester.pumpAndSettle();
+
+        final variants = <String>{};
+        for (var swipe = 0; swipe < 3; swipe++) {
+          expect(onCard(find.text('RAAD')), findsOneWidget);
+          expect(onCard(find.text('•••• •••• •••• 1635')), findsOneWidget);
+          expect(onCard(find.text(l10n.cardsDemo)), findsOneWidget);
+          final cardText = tester
+              .widgetList<Text>(onCard(find.byType(Text)))
+              .map((text) => text.data ?? '')
+              .join(' | ');
+          expect(
+            cardText,
+            isNot(
+              matches(
+                RegExp(r'visa|mastercard|apple|\bpay\b', caseSensitive: false),
+              ),
+            ),
+          );
+          expect(onCard(find.byIcon(Icons.apple)), findsNothing);
+          variants.addAll([
+            for (final label in [
+              l10n.cardsSilver,
+              l10n.cardsGold,
+              l10n.cardsPlatinum,
+            ])
+              if (onCard(find.text(label)).evaluate().isNotEmpty) label,
+          ]);
+          await tester.fling(
+            onCard(find.byType(AspectRatio)),
+            const Offset(-300, 0),
+            1000,
+          );
+          await tester.pumpAndSettle();
+        }
+
+        expect(variants, {
+          l10n.cardsSilver,
+          l10n.cardsGold,
+          l10n.cardsPlatinum,
+        });
+        expect(byKey('cards.appleWallet'), findsNothing);
+        expect(find.byType(SnackBar), findsNothing);
+      });
+    }
+
+    testWidgets('a swipe the other way and a tap on a dot change the card', (
+      tester,
+    ) async {
+      await openWallet(tester);
+      final carousel = find.byType(VirtualCardCarousel);
+      Finder onCard(Finder finder) =>
+          find.descendant(of: carousel, matching: finder);
+      await tester.ensureVisible(carousel);
+      await tester.pumpAndSettle();
+      expect(onCard(find.text(en.cardsSilver)), findsOneWidget);
+
+      await tester.fling(
+        onCard(find.byType(AspectRatio)),
+        const Offset(300, 0),
+        1000,
+      );
+      await tester.pumpAndSettle();
+      expect(onCard(find.text(en.cardsPlatinum)), findsOneWidget);
+
+      // The dots are the GestureDetectors below the card; the second is
+      // the gold card.
+      final dots = find.descendant(
+        of: onCard(find.byType(Row)).last,
+        matching: find.byType(GestureDetector),
+      );
+      await tester.tap(dots.at(1));
+      await tester.pumpAndSettle();
+      expect(onCard(find.text(en.cardsGold)), findsOneWidget);
+    });
   });
 }
