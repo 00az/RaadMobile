@@ -480,7 +480,7 @@ void main() {
     test(
       'a missing wallet or a rate limit saves nothing against the key',
       () async {
-        const key = 'nothing-saved-0001';
+        const key = 'nothing-saved-0001'; // gitleaks:allow (test request key)
         final noWallet = await call(
           'POST',
           '/transfers',

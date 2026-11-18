@@ -1,0 +1,5 @@
+# False positives only. Each line is one gitleaks fingerprint (commit:file:rule:line).
+# Add a line only after checking the finding is not a secret, and say why here.
+
+# U3 contract test: a made-up transfer request key ('nothing-saved-0001') read as a generic API key.
+9a790b678e03c77eb8307fa844486f2f6e52ea23:test/contract_test.dart:generic-api-key:483
