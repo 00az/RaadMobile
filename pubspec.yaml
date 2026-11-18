@@ -1,0 +1,62 @@
+name: raad_mobile
+description: "RAAD digital wallet app"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.2
+  flutter: 3.47.2
+
+dependencies:
+  amazon_cognito_identity_dart_2: ^4.0.1
+  connectivity_plus: ^7.3.2
+  dio: ^5.11.1
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_secure_storage: ^11.2.0
+  intl: ^0.20.3
+  uuid: ^4.6.0
+
+dev_dependencies:
+  crypto: ^3.0.8
+  flutter_launcher_icons: ^0.14.4
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  json_schema: ^5.2.2
+  swagger_parser: ^2.1.1
+  yaml: ^3.1.4
+
+flutter:
+  uses-material-design: true
+  # Generates the Arabic and English lookups from lib/l10n (see l10n.yaml).
+  generate: true
+  assets:
+    - assets/images/
+
+# Launcher icons from the bolt-only mark, cut from the person's lockup
+# (assets/images/raad_logo.jpg). Regenerate with `dart run flutter_launcher_icons`.
+flutter_launcher_icons:
+  image_path: assets/raad_bolt_icon.png
+  android: ic_launcher
+  ios: true
+  remove_alpha_ios: true
+  background_color_ios: "#000000"
+  min_sdk_android: 21
+
+# Dart client for the Money API (C1), generated only from the pinned copy.
+# Regenerate with `dart run swagger_parser`; CI runs it with `--check`.
+swagger_parser:
+  schema_path: contracts/pinned/c1-money-api/raad-money-v1.yaml
+  output_directory: lib/api/generated
+  generation:
+    root_api_class_name: MoneyApiClient
+    http_client: dio
+    serializer: plain
+    response_mode: all_statuses
+    unknown_enum_values: preserve
+    generate_docs: true

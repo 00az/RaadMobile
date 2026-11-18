@@ -1,0 +1,230 @@
+{
+  "@@locale": "en",
+  "appTitle": "RAAD",
+  "signInNoticeSessionEnded": "Your session has ended. Sign in again.",
+  "signInNoticeIdle": "For your security, please sign in again.",
+  "signInNoticeEmailConfirmed": "Your email is confirmed. Please sign in.",
+  "signInNoticePasswordChanged": "Your password was changed. Please sign in.",
+
+  "currencySar": "SAR",
+  "tryAgain": "Try again",
+  "refresh": "Refresh",
+  "signOut": "Sign out",
+  "loading": "Loading…",
+  "notAvailableYet": "Not available yet",
+  "offlineBanner": "No connection. Check your network and try again.",
+
+  "walletTitle": "RAAD WALLET",
+  "walletAccountType": "Individual account",
+  "walletAvailableBalance": "Available balance",
+  "walletBalanceHidden": "Balance hidden",
+  "walletShowBalance": "Show balance",
+  "walletHideBalance": "Hide balance",
+  "walletBalanceUpdated": "Updated {time}",
+  "@walletBalanceUpdated": {
+    "placeholders": {"time": {"type": "String"}}
+  },
+  "walletBalanceStale": "Out of date. Last updated {time}.",
+  "@walletBalanceStale": {
+    "placeholders": {"time": {"type": "String"}}
+  },
+  "walletBalanceError": "We could not load your balance.",
+  "walletBalanceSemantics": "Balance, {amount}",
+  "@walletBalanceSemantics": {
+    "placeholders": {"amount": {"type": "String"}}
+  },
+  "walletActionSend": "Send",
+  "walletActionTransactions": "Transactions",
+  "walletActionAccount": "Account",
+  "walletServices": "Services",
+  "walletViewAll": "View all",
+  "walletServiceRaad": "Transfer to RAAD wallet",
+  "walletServiceInternational": "International transfer",
+  "walletServiceBank": "Local bank transfer",
+  "walletHistory": "History",
+  "walletRecentActivity": "Recent activity",
+  "walletSettingUp": "Setting up your wallet…",
+  "walletSetupFailedTitle": "We could not set up your wallet",
+  "walletSetupFailedBody": "Nothing was lost. Please try again.",
+  "walletSetupEmailInUse": "Your email address is already linked to another wallet. Contact RAAD support.",
+  "walletSendOffline": "Sending needs a connection.",
+  "walletPendingTitle": "A transfer may not have gone through",
+  "walletPendingBody": "{amount} to {name}. Review it before you send again.",
+  "@walletPendingBody": {
+    "placeholders": {"amount": {"type": "String"}, "name": {"type": "String"}}
+  },
+  "walletPendingReview": "Review",
+
+  "genericError": "Something went wrong. Try again.",
+  "networkError": "We can't reach RAAD right now. Check your connection and try again.",
+  "tooManyAttempts": "Too many attempts. Please wait a few minutes and try again.",
+  "tooManyAttemptsSeconds": "Too many attempts. Try again in {seconds} seconds.",
+  "@tooManyAttemptsSeconds": {
+    "placeholders": {"seconds": {"type": "int"}}
+  },
+  "signInRefused": "The email address or password is not correct.",
+  "emailInUse": "This email address is already in use. Sign in instead?",
+  "passwordRule": "At least 8 characters, with a lower-case letter, an upper-case letter and a digit.",
+  "passwordRuleBroken": "The password needs at least 8 characters, a lower-case letter, an upper-case letter and a digit.",
+  "codeInvalid": "This code is not valid. Check it and try again.",
+
+  "sendTitle": "Send money",
+  "sendRecipientSection": "Recipient",
+  "sendRecipientLabel": "Recipient's email address",
+  "sendAmountSection": "Transfer amount",
+  "sendAmountLabel": "Amount (SAR)",
+  "sendAmountHint": "From 1.00 to 500.00 SAR",
+  "sendAvailable": "Available: {amount}",
+  "@sendAvailable": {
+    "placeholders": {"amount": {"type": "String"}}
+  },
+  "sendQuickAmount": "Fill in {amount}",
+  "@sendQuickAmount": {
+    "placeholders": {"amount": {"type": "String"}}
+  },
+  "sendMax": "Max",
+  "sendMaxHint": "Fill in the most you can send: {amount}",
+  "@sendMaxHint": {
+    "placeholders": {"amount": {"type": "String"}}
+  },
+  "sendDemoFill": "Demo: fill in {email}",
+  "@sendDemoFill": {
+    "placeholders": {"email": {"type": "String"}}
+  },
+  "sendContinue": "Continue",
+  "sendEmailRequired": "Enter the recipient's email address.",
+  "sendEmailInvalid": "Enter a complete email address.",
+  "sendAmountRequired": "Enter an amount.",
+  "sendAmountInvalid": "Enter an amount in SAR with up to two decimals.",
+  "amountRange": "The amount must be between 1.00 and 500.00 SAR.",
+  "balanceLow": "Your balance is too low for this transfer.",
+  "ownAddress": "You cannot send money to yourself.",
+  "noSuchUser": "No RAAD user has this email address.",
+  "sendingNeedsConnection": "Sending needs a connection.",
+  "checkHistoryFirst": "Check your History first. Your earlier transfer may have gone through.",
+  "requestBlocked": "This request was blocked. Try again later.",
+  "startNewTransfer": "This transfer could not be sent. Start a new transfer.",
+  "checkDetails": "Check the email address and amount, then try again.",
+
+  "reviewTitle": "Review transfer",
+  "reviewTo": "To",
+  "reviewEmail": "Email",
+  "reviewAmount": "Amount",
+  "reviewBalanceAfter": "Balance after",
+  "reviewConfirm": "Confirm and send",
+  "reviewSending": "Sending…",
+  "reviewCancel": "Cancel",
+  "reviewWalletReady": "Your wallet is ready now. Tap Confirm to send.",
+  "reviewNotSent": "The transfer was not sent. Check your connection and confirm again.",
+  "reviewNotSaved": "The transfer was not sent because it could not be saved safely on this phone. Try again.",
+  "transferUnconfirmedTitle": "We could not confirm the transfer",
+  "transferUnconfirmedBody": "Your money may or may not have been sent. Check your History before you try again.",
+  "uncertainCheck": "Check my balance and history",
+  "uncertainTryAgain": "Try again with the same details",
+  "uncertainTryAgainNote": "Try again sends the same request. If the first one went through, the money moves only once.",
+  "uncertainChangeDetails": "Change details",
+
+  "resultTitle": "Transfer sent",
+  "resultSummary": "You sent {amount} to {name}.",
+  "@resultSummary": {
+    "placeholders": {"amount": {"type": "String"}, "name": {"type": "String"}}
+  },
+  "resultReference": "Reference",
+  "resultNewBalance": "New balance",
+  "resultDone": "Done",
+
+  "historySentTo": "Sent to {name}",
+  "@historySentTo": {
+    "placeholders": {"name": {"type": "String"}}
+  },
+  "historyReceivedFrom": "Received from {name}",
+  "@historyReceivedFrom": {
+    "placeholders": {"name": {"type": "String"}}
+  },
+  "historyReference": "Ref {reference}",
+  "@historyReference": {
+    "placeholders": {"reference": {"type": "String"}}
+  },
+  "historyEntrySemantics": "{title}, {email}, {amount}, {time}, reference {reference}",
+  "@historyEntrySemantics": {
+    "placeholders": {
+      "title": {"type": "String"},
+      "email": {"type": "String"},
+      "amount": {"type": "String"},
+      "time": {"type": "String"},
+      "reference": {"type": "String"}
+    }
+  },
+  "historyEmpty": "No transfers yet.",
+  "historyError": "We could not load your history.",
+  "historyLoadMore": "Load more",
+  "historyLoadMoreFailed": "We could not load more. Try again.",
+  "historyRestarted": "Your history was reloaded from the newest transfer because the list had expired.",
+  "historySeeAll": "See all",
+  "historyCheck": "Check my history",
+  "historyEnd": "That is all your transfers.",
+
+  "logoLabel": "RAAD",
+  "showPassword": "Show password",
+  "hidePassword": "Hide password",
+  "emailLabel": "Email address",
+  "passwordLabel": "Password",
+  "signInTitle": "Sign in",
+  "signInTagline": "Lightning-fast digital transfers",
+  "signInSubmit": "Sign in",
+  "signInBusy": "Signing in…",
+  "signInForgot": "Forgot password?",
+  "signInNewToRaad": "New to RAAD?",
+  "signInCreateAccount": "Create an account",
+  "signInHaveCode": "Have a confirmation code?",
+  "signInEmailRequired": "Enter your email address.",
+  "signInEmailInvalid": "Enter a valid email address.",
+  "signInPasswordRequired": "Enter your password.",
+  "signInDemoFill": "Demo: fill in Sara",
+
+  "signUpTitle": "Create your account",
+  "signUpDisplayName": "Display name",
+  "signUpDisplayNameRequired": "Enter a display name.",
+  "signUpSubmit": "Create account",
+  "signUpBusy": "Creating your account…",
+  "signUpSignInInstead": "Sign in instead",
+  "signUpPrivacy": "We keep only your email address and display name. RAAD never asks for card or bank details.",
+
+  "confirmTitle": "Confirm your email",
+  "confirmIntro": "We sent a code to your email address. Enter it below.",
+  "confirmCode": "Confirmation code",
+  "confirmCodeRequired": "Enter the code from the email.",
+  "confirmSubmit": "Confirm",
+  "confirmBusy": "Confirming…",
+  "confirmResend": "Send the code again",
+  "codeResent": "We sent a new code.",
+
+  "forgotTitle": "Reset your password",
+  "forgotIntro": "Enter your email address and we will send you a code.",
+  "forgotSubmit": "Send code",
+  "forgotBusy": "Sending…",
+  "resetCodeSent": "If an account exists for this address, we sent a code.",
+  "resetTitle": "Choose a new password",
+  "resetCode": "Code",
+  "resetNewPassword": "New password",
+  "resetSubmit": "Change password",
+  "resetBusy": "Changing your password…",
+  "resetUncertain": "We could not confirm whether your password changed. Try signing in with the new password. If that does not work, ask for a new code.",
+  "resetGoToSignIn": "Go to sign in",
+  "resetNewCode": "Ask for a new code",
+
+  "accountTitle": "Account",
+  "accountLanguage": "Language",
+  "languageArabic": "العربية",
+  "languageEnglish": "English",
+
+  "cardsTitle": "My cards",
+  "cardsPreview": "Virtual card design",
+  "cardsDemo": "Demo card",
+  "cardsVirtualCard": "Virtual card",
+  "cardsSilver": "Silver",
+  "cardsGold": "Gold",
+  "cardsPlatinum": "Platinum",
+
+  "configErrorTitle": "This build has no valid environment configuration."
+}

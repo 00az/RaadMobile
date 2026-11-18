@@ -1,0 +1,13 @@
+# Contracts this repo consumes. Each entry pins one byte-for-byte copy under
+# contracts/pinned/. Code generation and tests read only those copies, and
+# test/contract_test.dart fails if a copy's SHA-256 differs from its entry.
+# Change a pin only through a pull request, with tool/pin_contract.dart.
+pins:
+  - contract: c1-money-api
+    owner: 00az/RaadMoneyService
+    file: openapi/raad-money-v1.yaml
+    copy: contracts/pinned/c1-money-api/raad-money-v1.yaml
+    tag: null
+    commit: 2b3660b9d05c0a06f5018f61b74f6621289924ec
+    sha256: 31780d203ceb04f4a9e16e99e53573addab97dc7b1713e6918d5615237a9ece0
+    note: Development pin; no release tag exists yet. Replace it with a contract/c1-money-api tag once one is created.

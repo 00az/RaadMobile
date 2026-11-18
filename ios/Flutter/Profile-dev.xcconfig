@@ -1,0 +1,6 @@
+// The dev flavour, Profile: flutter build ios --profile --flavor dev ...
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.profile-dev.xcconfig"
+#include "Generated.xcconfig"
+RAAD_FLAVOR = dev
+RAAD_BUNDLE_SUFFIX = .dev
+RAAD_DISPLAY_NAME = RAAD DEV
